@@ -1,5 +1,62 @@
 import { Button } from "@/components/ui/button";
-import { Zap, Activity, Trophy } from "lucide-react";
+import { Zap, Activity, Trophy, Play, Pause } from "lucide-react";
+import { useState, useRef } from "react";
+
+const ReelDemoFrame = () => {
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [showControls, setShowControls] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  return (
+    <div 
+      className="relative w-full max-w-[320px] md:max-w-[360px] aspect-[9/16] rounded-[26px] overflow-hidden bg-background border border-border/30 shadow-2xl glow-orange group md:hover:scale-[1.02] transition-transform duration-500"
+      onMouseEnter={() => setShowControls(true)}
+      onMouseLeave={() => setShowControls(false)}
+      onClick={togglePlay}
+    >
+      {/* Video */}
+      <video
+        ref={videoRef}
+        src="/videos/bumrah_bowling_144.mp4"
+        className="absolute inset-0 w-full h-full object-contain bg-black"
+        autoPlay
+        muted
+        loop
+        playsInline
+      />
+
+      {/* Top-left Label */}
+      <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-border/30 z-10">
+        <span className="text-xs font-medium text-foreground">Reel • AI Motion Check</span>
+      </div>
+
+      {/* Bottom Gradient Fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/30 via-primary/10 to-transparent pointer-events-none" />
+
+      {/* Play/Pause Button */}
+      <div 
+        className={`absolute bottom-8 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full gradient-primary flex items-center justify-center shadow-lg glow-orange transition-opacity duration-300 cursor-pointer z-10 ${showControls || !isPlaying ? 'opacity-100' : 'opacity-0'}`}
+      >
+        {isPlaying ? (
+          <Pause className="w-6 h-6 text-primary-foreground" />
+        ) : (
+          <Play className="w-6 h-6 text-primary-foreground ml-1" />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const Index = () => {
   return (
@@ -34,6 +91,25 @@ const Index = () => {
             <Button variant="outline" size="lg">
               Learn More
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Cadence Reels Demo Section */}
+      <section className="py-24 px-6">
+        <div className="container">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">
+              <span className="gradient-text">Cadence Reels</span> Demo
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+              AI-powered motion analysis for athletes
+            </p>
+          </div>
+          
+          {/* Reel Frame Container */}
+          <div className="flex justify-center">
+            <ReelDemoFrame />
           </div>
         </div>
       </section>
