@@ -14,13 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      reel_attempts: {
+        Row: {
+          ai_match_score: number
+          athlete_id: string
+          coins_earned: number
+          created_at: string
+          id: string
+          reel_id: string
+          video_url: string
+        }
+        Insert: {
+          ai_match_score?: number
+          athlete_id: string
+          coins_earned?: number
+          created_at?: string
+          id?: string
+          reel_id: string
+          video_url: string
+        }
+        Update: {
+          ai_match_score?: number
+          athlete_id?: string
+          coins_earned?: number
+          created_at?: string
+          id?: string
+          reel_id?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reel_attempts_reel_id_fkey"
+            columns: ["reel_id"]
+            isOneToOne: false
+            referencedRelation: "reels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reel_likes: {
+        Row: {
+          created_at: string
+          id: string
+          reel_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reel_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reel_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reel_likes_reel_id_fkey"
+            columns: ["reel_id"]
+            isOneToOne: false
+            referencedRelation: "reels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reel_saves: {
+        Row: {
+          created_at: string
+          id: string
+          reel_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reel_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reel_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reel_saves_reel_id_fkey"
+            columns: ["reel_id"]
+            isOneToOne: false
+            referencedRelation: "reels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reels: {
+        Row: {
+          comments_count: number
+          created_at: string
+          creator_id: string | null
+          creator_initials: string
+          creator_title: string
+          creator_username: string
+          description: string | null
+          hashtags: string | null
+          id: string
+          likes_count: number
+          title: string
+          video_url: string
+        }
+        Insert: {
+          comments_count?: number
+          created_at?: string
+          creator_id?: string | null
+          creator_initials: string
+          creator_title: string
+          creator_username: string
+          description?: string | null
+          hashtags?: string | null
+          id?: string
+          likes_count?: number
+          title: string
+          video_url: string
+        }
+        Update: {
+          comments_count?: number
+          created_at?: string
+          creator_id?: string | null
+          creator_initials?: string
+          creator_title?: string
+          creator_username?: string
+          description?: string | null
+          hashtags?: string | null
+          id?: string
+          likes_count?: number
+          title?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      reel_leaderboard: {
+        Args: { p_reel_id: string }
+        Returns: {
+          athlete_id: string
+          attempts_count: number
+          best_score: number
+          rank: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
