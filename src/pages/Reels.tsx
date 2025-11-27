@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Scan, ChevronRight } from "lucide-react";
+import { useState, useRef } from "react";
+import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Scan, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ReelData {
@@ -67,24 +67,48 @@ const reelsData: ReelData[] = [
 const ReelCard = ({ reel }: { reel: ReelData }) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
 
   return (
     <div className="h-full w-full flex-shrink-0 snap-start snap-always flex flex-col pt-12 pb-6">
       {/* Video Frame Container - 9:16 aspect */}
       <div className="relative flex-1 mx-3 rounded-2xl overflow-hidden bg-card border border-border/20">
         
-        {/* Video Placeholder */}
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/30 to-muted/60 flex items-center justify-center">
-          {/* Play Button Overlay */}
-          <button className="w-20 h-20 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center border border-foreground/10 hover:scale-105 transition-transform">
-            <Play className="w-8 h-8 text-foreground fill-foreground ml-1" />
-          </button>
-          
-          {/* Simulated Video Content Shapes */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-20">
-            <div className="w-32 h-48 border-2 border-dashed border-foreground/30 rounded-lg" />
+        {/* Video */}
+        <video
+          ref={videoRef}
+          src="/videos/bumrah_bowling_144.mp4"
+          className="absolute inset-0 w-full h-full object-contain bg-black"
+          muted
+          loop
+          playsInline
+        />
+        
+        {/* Play/Pause Button Overlay */}
+        <button 
+          onClick={togglePlay}
+          className="absolute inset-0 flex items-center justify-center z-10"
+        >
+          <div className={`w-20 h-20 rounded-full bg-background/20 backdrop-blur-md flex items-center justify-center border border-foreground/10 hover:scale-105 transition-all ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
+            {isPlaying ? (
+              <Pause className="w-8 h-8 text-foreground" />
+            ) : (
+              <Play className="w-8 h-8 text-foreground fill-foreground ml-1" />
+            )}
           </div>
-        </div>
+        </button>
 
         {/* AI Match Score Badge */}
         <div className="absolute top-4 left-4 flex items-center gap-2">
