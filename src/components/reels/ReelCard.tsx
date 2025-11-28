@@ -12,9 +12,65 @@ interface ReelCardProps {
   onOpenTips: (reel: Reel) => void;
   onOpenLeaderboard: (reel: Reel) => void;
   isVisible: boolean;
+  userScore?: number; // User's best AI Match score for this reel (0-100)
 }
 
-const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, isVisible }: ReelCardProps) => {
+// Progress ring component for avatar
+const AvatarProgressRing = ({ score, children }: { score: number; children: React.ReactNode }) => {
+  const size = 48; // Ring outer size
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (score / 100) * circumference;
+  const hasAttempted = score > 20;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      {/* SVG Progress Ring */}
+      <svg
+        className="absolute inset-0 -rotate-90"
+        width={size}
+        height={size}
+      >
+        {/* Background track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgb(51 65 85 / 0.6)"
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress arc */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={hasAttempted ? "url(#orangeGradient)" : "rgb(71 85 105 / 0.5)"}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference - progress}
+          className="transition-all duration-500"
+        />
+        {/* Gradient definition */}
+        <defs>
+          <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FF7A00" />
+            <stop offset="100%" stopColor="#FF5C00" />
+          </linearGradient>
+        </defs>
+      </svg>
+      {/* Avatar centered inside */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, isVisible, userScore = 20 }: ReelCardProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -189,9 +245,11 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent pt-20 pb-6 px-4">
           {/* Creator Info */}
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
-              {reel.creator_initials}
-            </div>
+            <AvatarProgressRing score={userScore}>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center text-sm font-bold text-white">
+                {reel.creator_initials}
+              </div>
+            </AvatarProgressRing>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm text-white">{reel.creator_username}</p>
               <p className="text-xs text-gray-400">{reel.creator_title}</p>
