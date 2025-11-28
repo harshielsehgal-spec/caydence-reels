@@ -106,54 +106,22 @@ export async function fetchLeaderboard(reelId: string): Promise<LeaderboardEntry
   return data as LeaderboardEntry[];
 }
 
+// Stubbed out - no Supabase writes for demo
 export async function toggleLike(reelId: string, userId: string, isLiked: boolean): Promise<boolean> {
-  if (isLiked) {
-    const { error } = await supabase
-      .from('reel_likes')
-      .delete()
-      .eq('reel_id', reelId)
-      .eq('user_id', userId);
-    return !error;
-  } else {
-    const { error } = await supabase
-      .from('reel_likes')
-      .insert({ reel_id: reelId, user_id: userId });
-    return !error;
-  }
+  return true;
 }
 
+// Stubbed out - no Supabase writes for demo
 export async function toggleSave(reelId: string, userId: string, isSaved: boolean): Promise<boolean> {
-  if (isSaved) {
-    const { error } = await supabase
-      .from('reel_saves')
-      .delete()
-      .eq('reel_id', reelId)
-      .eq('user_id', userId);
-    return !error;
-  } else {
-    const { error } = await supabase
-      .from('reel_saves')
-      .insert({ reel_id: reelId, user_id: userId });
-    return !error;
-  }
+  return true;
 }
 
+// Stubbed out - no Supabase reads for demo
 export async function checkUserLikedReel(reelId: string, userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('reel_likes')
-    .select('id')
-    .eq('reel_id', reelId)
-    .eq('user_id', userId)
-    .maybeSingle();
-  return !!data;
+  return false;
 }
 
+// Stubbed out - no Supabase reads for demo
 export async function checkUserSavedReel(reelId: string, userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('reel_saves')
-    .select('id')
-    .eq('reel_id', reelId)
-    .eq('user_id', userId)
-    .maybeSingle();
-  return !!data;
+  return false;
 }
