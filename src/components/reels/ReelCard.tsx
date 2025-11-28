@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Reel, toggleLike, toggleSave, checkUserLikedReel, checkUserSavedReel } from "@/lib/reels";
+import { Reel } from "@/lib/reels";
 import { toast } from "@/hooks/use-toast";
 
 interface ReelCardProps {
@@ -16,19 +16,10 @@ interface ReelCardProps {
 const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, isVisible }: ReelCardProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [likesCount, setLikesCount] = useState(reel.likes_count);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLiking, setIsLiking] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Check initial like/save status
-  useEffect(() => {
-    if (athleteId) {
-      checkUserLikedReel(reel.id, athleteId).then(setLiked);
-      checkUserSavedReel(reel.id, athleteId).then(setSaved);
-    }
-  }, [reel.id, athleteId]);
 
   // Autoplay when visible
   useEffect(() => {
@@ -54,55 +45,20 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
     }
   };
 
-  const handleLike = async (e: React.MouseEvent) => {
+  const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isLiking) return;
-    
-    // Optimistic update
-    const wasLiked = liked;
     setLiked(!liked);
-    setLikesCount(prev => wasLiked ? prev - 1 : prev + 1);
-    
-    if (!athleteId) {
-      // Still show visual feedback for demo
-      return;
-    }
-    
-    setIsLiking(true);
-    const success = await toggleLike(reel.id, athleteId, wasLiked);
-    setIsLiking(false);
-    
-    if (!success) {
-      // Revert on failure
-      setLiked(wasLiked);
-      setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
-      toast({ title: "Failed to update like", variant: "destructive" });
-    }
+    setLikesCount(prev => liked ? prev - 1 : prev + 1);
   };
 
-  const handleSave = async (e: React.MouseEvent) => {
+  const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isSaving) return;
-    
-    // Optimistic update
-    const wasSaved = saved;
     setSaved(!saved);
-    toast({ title: wasSaved ? "Removed from saved" : "Saved to collection" });
-    
-    if (!athleteId) {
-      // Still show visual feedback for demo
-      return;
-    }
-    
-    setIsSaving(true);
-    const success = await toggleSave(reel.id, athleteId, wasSaved);
-    setIsSaving(false);
-    
-    if (!success) {
-      // Revert on failure
-      setSaved(wasSaved);
-      toast({ title: "Failed to update save", variant: "destructive" });
-    }
+  };
+
+  const handleFollow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsFollowing(!isFollowing);
   };
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -236,10 +192,14 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
               <p className="text-xs text-gray-400">{reel.creator_title}</p>
             </div>
             <button 
-              onClick={(e) => e.stopPropagation()}
-              className="px-4 py-1.5 rounded-full border border-[#FF7A00] text-[#FF7A00] text-xs font-semibold hover:bg-[#FF7A00] hover:text-white transition-colors"
+              onClick={handleFollow}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                isFollowing 
+                  ? 'bg-[#FF7A00] text-white border border-[#FF7A00]' 
+                  : 'border border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00] hover:text-white'
+              }`}
             >
-              Follow
+              {isFollowing ? 'Following' : 'Follow'}
             </button>
           </div>
 
