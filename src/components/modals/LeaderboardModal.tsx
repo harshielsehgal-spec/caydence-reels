@@ -10,6 +10,21 @@ interface LeaderboardModalProps {
   athleteId?: string;
 }
 
+// Fallback demo leaderboard when no real data exists
+const fallbackLeaderboard: LeaderboardEntry[] = [
+  { athlete_id: "demo-1", best_score: 95, attempts_count: 7, rank: 1 },
+  { athlete_id: "demo-2", best_score: 92, attempts_count: 5, rank: 2 },
+  { athlete_id: "demo-3", best_score: 90, attempts_count: 8, rank: 3 },
+  { athlete_id: "demo-4", best_score: 88, attempts_count: 4, rank: 4 },
+];
+
+const fallbackNames: { [key: string]: string } = {
+  "demo-1": "Aarya Singh",
+  "demo-2": "Kabir Mehra",
+  "demo-3": "Rohan Verma",
+  "demo-4": "Meera Nair",
+};
+
 const LeaderboardModal = ({ isOpen, onClose, reel, athleteId }: LeaderboardModalProps) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,7 +40,13 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId }: LeaderboardModal
     if (!reel) return;
     setIsLoading(true);
     const data = await fetchLeaderboard(reel.id);
-    setLeaderboard(data);
+    
+    // Use fallback data if empty or error
+    if (data.length === 0) {
+      setLeaderboard(fallbackLeaderboard);
+    } else {
+      setLeaderboard(data);
+    }
     
     if (athleteId) {
       const entry = data.find(e => e.athlete_id === athleteId);
@@ -124,7 +145,10 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId }: LeaderboardModal
 
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-white text-sm truncate">
-                    {athleteId === entry.athlete_id ? 'You' : `Athlete ${entry.athlete_id.slice(0, 8)}`}
+                    {athleteId === entry.athlete_id 
+                      ? 'You' 
+                      : fallbackNames[entry.athlete_id] || `Athlete ${entry.athlete_id.slice(0, 8)}`
+                    }
                   </p>
                   <p className="text-xs text-gray-400">{entry.attempts_count} attempts</p>
                 </div>
