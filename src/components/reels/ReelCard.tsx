@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Scan } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Trophy, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Reel } from "@/lib/reels";
 import { toast } from "@/hooks/use-toast";
@@ -128,12 +128,15 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           </div>
         </div>
 
-        {/* Top Right - Analysis Icon */}
-        <div className="absolute top-4 right-4 z-20">
-          <div className="p-2 rounded-lg bg-slate-900/60 backdrop-blur-md border border-white/10">
-            <Scan className="w-5 h-5 text-[#FF7A00]" />
+        {/* Top Right - Trophy Leaderboard Icon */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
+          className="absolute top-4 right-4 z-20"
+        >
+          <div className="p-2 rounded-lg bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-[#FF7A00] transition-colors">
+            <Trophy className="w-5 h-5 text-[#FF7A00]" />
           </div>
-        </div>
+        </button>
 
         {/* Right Side - Engagement Buttons */}
         <div className="absolute right-3 top-1/3 flex flex-col items-center gap-5 z-20">
