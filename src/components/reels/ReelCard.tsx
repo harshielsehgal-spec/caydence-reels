@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Scan } fro
 import { Button } from "@/components/ui/button";
 import { Reel } from "@/lib/reels";
 import { toast } from "@/hooks/use-toast";
+import CommentsSheet from "./CommentsSheet";
 
 interface ReelCardProps {
   reel: Reel;
@@ -19,6 +20,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
   const [isFollowing, setIsFollowing] = useState(false);
   const [likesCount, setLikesCount] = useState(reel.likes_count);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Autoplay when visible
@@ -146,9 +148,9 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             <span className="text-xs font-semibold text-white drop-shadow-lg">{formatCount(likesCount)}</span>
           </button>
 
-          {/* Comment / Leaderboard */}
+          {/* Comments / Insights */}
           <button 
-            onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
+            onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }}
             className="flex flex-col items-center gap-1 group"
           >
             <div className="w-12 h-12 rounded-full bg-slate-900/60 backdrop-blur-md flex items-center justify-center">
@@ -227,6 +229,12 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             </button>
           </div>
         </div>
+
+        {/* Comments Sheet */}
+        <CommentsSheet 
+          isOpen={isCommentsOpen} 
+          onClose={() => setIsCommentsOpen(false)} 
+        />
       </div>
     </div>
   );
