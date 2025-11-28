@@ -8,15 +8,18 @@ interface ReelCardProps {
   reel: Reel;
   athleteId?: string;
   onAnalyze: (reel: Reel) => void;
+  onOpenTips: (reel: Reel) => void;
   onOpenLeaderboard: (reel: Reel) => void;
   isVisible: boolean;
 }
 
-const ReelCard = ({ reel, athleteId, onAnalyze, onOpenLeaderboard, isVisible }: ReelCardProps) => {
+const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, isVisible }: ReelCardProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(reel.likes_count);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Check initial like/save status
@@ -53,27 +56,52 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenLeaderboard, isVisible }: 
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isLiking) return;
+    
+    // Optimistic update
+    const wasLiked = liked;
+    setLiked(!liked);
+    setLikesCount(prev => wasLiked ? prev - 1 : prev + 1);
+    
     if (!athleteId) {
-      toast({ title: "Please sign in to like", variant: "destructive" });
+      // Still show visual feedback for demo
       return;
     }
-    const success = await toggleLike(reel.id, athleteId, liked);
-    if (success) {
-      setLiked(!liked);
-      setLikesCount(prev => liked ? prev - 1 : prev + 1);
+    
+    setIsLiking(true);
+    const success = await toggleLike(reel.id, athleteId, wasLiked);
+    setIsLiking(false);
+    
+    if (!success) {
+      // Revert on failure
+      setLiked(wasLiked);
+      setLikesCount(prev => wasLiked ? prev + 1 : prev - 1);
+      toast({ title: "Failed to update like", variant: "destructive" });
     }
   };
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isSaving) return;
+    
+    // Optimistic update
+    const wasSaved = saved;
+    setSaved(!saved);
+    toast({ title: wasSaved ? "Removed from saved" : "Saved to collection" });
+    
     if (!athleteId) {
-      toast({ title: "Please sign in to save", variant: "destructive" });
+      // Still show visual feedback for demo
       return;
     }
-    const success = await toggleSave(reel.id, athleteId, saved);
-    if (success) {
-      setSaved(!saved);
-      toast({ title: saved ? "Removed from saved" : "Saved to collection" });
+    
+    setIsSaving(true);
+    const success = await toggleSave(reel.id, athleteId, wasSaved);
+    setIsSaving(false);
+    
+    if (!success) {
+      // Revert on failure
+      setSaved(wasSaved);
+      toast({ title: "Failed to update save", variant: "destructive" });
     }
   };
 
@@ -181,7 +209,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenLeaderboard, isVisible }: 
             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${saved ? 'bg-[#FF7A00]/30' : 'bg-slate-900/60 backdrop-blur-md'}`}>
               <Bookmark className={`w-6 h-6 transition-all ${saved ? 'text-[#FF7A00] fill-[#FF7A00]' : 'text-white group-hover:text-[#FF7A00]'}`} />
             </div>
-            <span className="text-xs font-semibold text-white drop-shadow-lg">Save</span>
+            <span className="text-xs font-semibold text-white drop-shadow-lg">{saved ? 'Saved' : 'Save'}</span>
           </button>
 
           {/* Share */}
@@ -225,7 +253,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenLeaderboard, isVisible }: 
           {/* CTA Buttons */}
           <div className="flex items-center gap-3">
             <Button 
-              onClick={(e) => { e.stopPropagation(); onAnalyze(reel); }}
+              onClick={(e) => { e.stopPropagation(); onOpenTips(reel); }}
               className="flex-1 h-11 justify-center gap-2 bg-slate-800/80 backdrop-blur-md border border-white/10 text-white hover:bg-slate-700/80"
             >
               <Scan className="w-4 h-4" />

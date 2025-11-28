@@ -6,10 +6,11 @@ interface ReelsFeedProps {
   reels: Reel[];
   athleteId?: string;
   onAnalyze: (reel: Reel) => void;
+  onOpenTips: (reel: Reel) => void;
   onOpenLeaderboard: (reel: Reel) => void;
 }
 
-const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenLeaderboard }: ReelsFeedProps) => {
+const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard }: ReelsFeedProps) => {
   const [visibleReelId, setVisibleReelId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -69,6 +70,7 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenLeaderboard }: ReelsFeed
             reel={reel}
             athleteId={athleteId}
             onAnalyze={onAnalyze}
+            onOpenTips={onOpenTips}
             onOpenLeaderboard={onOpenLeaderboard}
             isVisible={visibleReelId === reel.id}
           />
