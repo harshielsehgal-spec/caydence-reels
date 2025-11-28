@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ReelsFeed from "./reels/ReelsFeed";
 import UploadAttemptModal from "./modals/UploadAttemptModal";
 import LeaderboardModal from "./modals/LeaderboardModal";
+import AnalyzeTipsModal from "./modals/AnalyzeTipsModal";
 import { Reel, fetchReels } from "@/lib/reels";
 import { Loader2 } from "lucide-react";
 
@@ -15,6 +16,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
 
   useEffect(() => {
     loadReels();
@@ -30,6 +32,11 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const handleAnalyze = (reel: Reel) => {
     setSelectedReel(reel);
     setIsUploadModalOpen(true);
+  };
+
+  const handleOpenTips = (reel: Reel) => {
+    setSelectedReel(reel);
+    setIsTipsModalOpen(true);
   };
 
   const handleOpenLeaderboard = (reel: Reel) => {
@@ -54,6 +61,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         reels={reels}
         athleteId={athleteId}
         onAnalyze={handleAnalyze}
+        onOpenTips={handleOpenTips}
         onOpenLeaderboard={handleOpenLeaderboard}
       />
 
@@ -67,6 +75,13 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
+        reel={selectedReel}
+        athleteId={athleteId}
+      />
+
+      <AnalyzeTipsModal
+        isOpen={isTipsModalOpen}
+        onClose={() => setIsTipsModalOpen(false)}
         reel={selectedReel}
         athleteId={athleteId}
       />
