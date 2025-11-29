@@ -17,6 +17,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
+  const [userScores, setUserScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadReels();
@@ -44,6 +45,10 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
     setIsLeaderboardOpen(true);
   };
 
+  const handleScoreResult = (reelId: string, score: number) => {
+    setUserScores(prev => ({ ...prev, [reelId]: score }));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -63,6 +68,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onAnalyze={handleAnalyze}
         onOpenTips={handleOpenTips}
         onOpenLeaderboard={handleOpenLeaderboard}
+        userScores={userScores}
       />
 
       <UploadAttemptModal
@@ -70,6 +76,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onClose={() => setIsUploadModalOpen(false)}
         reel={selectedReel}
         athleteId={athleteId || ''}
+        onResult={handleScoreResult}
       />
 
       <LeaderboardModal
