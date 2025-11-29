@@ -3,8 +3,11 @@ import ReelsFeed from "./reels/ReelsFeed";
 import UploadAttemptModal from "./modals/UploadAttemptModal";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import AnalyzeTipsModal from "./modals/AnalyzeTipsModal";
+import AttemptGateModal from "./modals/AttemptGateModal";
+import AdModal from "./modals/AdModal";
 import { Reel, fetchReels } from "@/lib/reels";
 import { Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface ReelsExperienceProps {
   athleteId?: string;
@@ -19,6 +22,10 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
   const [userScores, setUserScores] = useState<Record<string, number>>({});
   const [joinedChallenges, setJoinedChallenges] = useState<Record<string, boolean>>({});
+  const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
+  const [isGateModalOpen, setIsGateModalOpen] = useState(false);
+  const [isAdModalOpen, setIsAdModalOpen] = useState(false);
+  const [gatedReelId, setGatedReelId] = useState<string | null>(null);
 
   useEffect(() => {
     loadReels();
@@ -32,8 +39,15 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   };
 
   const handleAnalyze = (reel: Reel) => {
-    setSelectedReel(reel);
-    setIsUploadModalOpen(true);
+    const attempts = attemptCounts[reel.id] ?? 0;
+    if (attempts >= 3) {
+      setGatedReelId(reel.id);
+      setSelectedReel(reel);
+      setIsGateModalOpen(true);
+    } else {
+      setSelectedReel(reel);
+      setIsUploadModalOpen(true);
+    }
   };
 
   const handleOpenTips = (reel: Reel) => {
@@ -48,6 +62,29 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
 
   const handleScoreResult = (reelId: string, score: number) => {
     setUserScores(prev => ({ ...prev, [reelId]: score }));
+    setAttemptCounts(prev => ({ ...prev, [reelId]: (prev[reelId] ?? 0) + 1 }));
+  };
+
+  const handleWatchAd = () => {
+    setIsGateModalOpen(false);
+    setIsAdModalOpen(true);
+  };
+
+  const handlePayDemo = () => {
+    if (gatedReelId) {
+      setAttemptCounts(prev => ({ ...prev, [gatedReelId]: 2 }));
+      toast({ title: "Demo payment successful. Extra attempt unlocked." });
+      setIsGateModalOpen(false);
+      setIsUploadModalOpen(true);
+    }
+  };
+
+  const handleAdComplete = () => {
+    if (gatedReelId) {
+      setAttemptCounts(prev => ({ ...prev, [gatedReelId]: 2 }));
+      setIsAdModalOpen(false);
+      setIsUploadModalOpen(true);
+    }
   };
 
   const handleJoinChallenge = (reelId: string) => {
@@ -99,6 +136,18 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onClose={() => setIsTipsModalOpen(false)}
         reel={selectedReel}
         athleteId={athleteId}
+      />
+
+      <AttemptGateModal
+        isOpen={isGateModalOpen}
+        onClose={() => setIsGateModalOpen(false)}
+        onWatchAd={handleWatchAd}
+        onPay={handlePayDemo}
+      />
+
+      <AdModal
+        isOpen={isAdModalOpen}
+        onComplete={handleAdComplete}
       />
     </div>
   );
