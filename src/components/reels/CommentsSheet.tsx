@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { X, MessageCircle } from "lucide-react";
+import { X, MessageCircle, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
-interface Comment {
+interface ChatMessage {
+  id: string;
   name: string;
-  score: string;
   text: string;
+  isUser?: boolean;
 }
 
 interface CommentsSheetProps {
@@ -12,50 +16,59 @@ interface CommentsSheetProps {
   onClose: () => void;
 }
 
-const sampleComments: Comment[] = [
+const initialMessages: ChatMessage[] = [
   {
+    id: "1",
     name: "Aarya",
-    score: "91% match",
-    text: "now, this drill fixed my run-up."
+    text: "Any tips for controlling the yorker length?",
   },
   {
+    id: "2",
+    name: "Coach Samir",
+    text: "Focus on your release point and follow-through. Keep your eyes on the target till the end.",
+  },
+  {
+    id: "3",
     name: "Kabir",
-    score: "88% match",
-    text: "Release timing finally clicked after 3 attempts 👌"
+    text: "The slow-mo breakdown really helped me understand the arm rotation!",
   },
-  {
-    name: "Riya",
-    score: "85% match",
-    text: "Please add a spin variation of this drill!"
-  },
-  {
-    name: "Dev",
-    score: "92% match",
-    text: "The slow-mo breakdown really helps understand the mechanics."
-  },
-  {
-    name: "Priya",
-    score: "87% match",
-    text: "This is exactly what I needed to improve my follow-through!"
-  },
-  {
-    name: "Arjun",
-    score: "90% match",
-    text: "Been practicing this for a week, seeing real improvement 🔥"
-  }
 ];
 
 const CommentsSheet = ({ isOpen, onClose }: CommentsSheetProps) => {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [inputValue, setInputValue] = useState("");
+
+  const handleSend = () => {
+    if (!inputValue.trim()) return;
+    
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      name: "You",
+      text: inputValue.trim(),
+      isUser: true,
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+    setInputValue("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="bottom" 
-        className="bg-slate-900 border-slate-800 text-white rounded-t-3xl max-h-[70vh] overflow-y-auto"
+        className="bg-slate-900 border-slate-800 text-white rounded-t-3xl h-[70vh] flex flex-col"
       >
-        <SheetHeader className="flex flex-row items-center justify-between mb-4">
+        <SheetHeader className="flex flex-row items-center justify-between mb-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-[#FF7A00]" />
-            <SheetTitle className="text-white text-lg font-bold">Athlete Insights</SheetTitle>
+            <SheetTitle className="text-white text-lg font-bold">Chat</SheetTitle>
           </div>
           <button
             onClick={onClose}
@@ -65,27 +78,54 @@ const CommentsSheet = ({ isOpen, onClose }: CommentsSheetProps) => {
           </button>
         </SheetHeader>
 
-        <div className="space-y-3 pb-4">
-          {sampleComments.map((comment, index) => (
+        {/* Messages List */}
+        <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+          {messages.map((message) => (
             <div 
-              key={index}
-              className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50"
+              key={message.id}
+              className={`flex gap-3 ${message.isUser ? 'flex-row-reverse' : ''}`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center text-xs font-bold text-white">
-                  {comment.name[0]}
-                </div>
-                <div className="flex-1">
-                  <span className="font-semibold text-white">{comment.name}</span>
-                  <span className="text-gray-400 mx-2">·</span>
-                  <span className="text-[#FF7A00] text-sm font-medium">{comment.score}</span>
+              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white ${
+                message.isUser 
+                  ? 'bg-[#FF7A00]' 
+                  : 'bg-gradient-to-r from-slate-600 to-slate-700'
+              }`}>
+                {message.name[0]}
+              </div>
+              <div className={`max-w-[75%] ${message.isUser ? 'text-right' : ''}`}>
+                <p className={`text-xs text-gray-400 mb-1 ${message.isUser ? 'text-right' : ''}`}>
+                  {message.name}
+                </p>
+                <div className={`rounded-2xl px-4 py-2 ${
+                  message.isUser 
+                    ? 'bg-[#FF7A00] text-white rounded-br-md' 
+                    : 'bg-slate-800/80 text-gray-200 rounded-bl-md'
+                }`}>
+                  <p className="text-sm leading-relaxed">{message.text}</p>
                 </div>
               </div>
-              <p className="text-gray-300 text-sm leading-relaxed pl-10">
-                {comment.text}
-              </p>
             </div>
           ))}
+        </div>
+
+        {/* Input Area */}
+        <div className="flex-shrink-0 pt-3 border-t border-slate-800">
+          <div className="flex items-center gap-2">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className="flex-1 bg-slate-800 border-slate-700 text-white placeholder:text-gray-500 focus-visible:ring-[#FF7A00]"
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!inputValue.trim()}
+              className="h-10 w-10 p-0 bg-[#FF7A00] hover:bg-[#FF5C00] disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trophy, Medal, User, TrendingUp } from "lucide-react";
+import { Trophy, Medal, User, TrendingUp, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Reel, fetchLeaderboard, LeaderboardEntry } from "@/lib/reels";
 
 interface LeaderboardModalProps {
@@ -8,6 +9,8 @@ interface LeaderboardModalProps {
   onClose: () => void;
   reel: Reel | null;
   athleteId?: string;
+  isJoined?: boolean;
+  onJoinChallenge?: (reelId: string) => void;
 }
 
 // Fallback demo leaderboard when no real data exists
@@ -25,7 +28,7 @@ const fallbackNames: { [key: string]: string } = {
   "demo-4": "Meera Nair",
 };
 
-const LeaderboardModal = ({ isOpen, onClose, reel, athleteId }: LeaderboardModalProps) => {
+const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, onJoinChallenge }: LeaderboardModalProps) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [userEntry, setUserEntry] = useState<LeaderboardEntry | null>(null);
@@ -81,6 +84,12 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId }: LeaderboardModal
     }
   };
 
+  const handleJoinChallenge = () => {
+    if (reel && onJoinChallenge) {
+      onJoinChallenge(reel.id);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-white max-h-[80vh] overflow-hidden flex flex-col">
@@ -93,6 +102,31 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId }: LeaderboardModal
             <p className="text-sm text-gray-400 mt-1">{reel.title}</p>
           )}
         </DialogHeader>
+
+        {/* Join Challenge Section */}
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 mb-4">
+          <p className="text-sm text-gray-300 mb-3">
+            Join this challenge to track your attempts and see where you rank.
+          </p>
+          <Button
+            onClick={handleJoinChallenge}
+            disabled={isJoined}
+            className={`w-full h-10 ${
+              isJoined 
+                ? 'bg-slate-700 text-gray-400 cursor-default' 
+                : 'bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] text-white hover:opacity-90'
+            }`}
+          >
+            {isJoined ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Joined
+              </>
+            ) : (
+              'Join Challenge'
+            )}
+          </Button>
+        </div>
 
         {/* User's Score Card */}
         {userEntry && (

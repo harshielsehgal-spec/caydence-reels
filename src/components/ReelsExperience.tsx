@@ -18,6 +18,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
   const [userScores, setUserScores] = useState<Record<string, number>>({});
+  const [joinedChallenges, setJoinedChallenges] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadReels();
@@ -49,6 +50,10 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
     setUserScores(prev => ({ ...prev, [reelId]: score }));
   };
 
+  const handleJoinChallenge = (reelId: string) => {
+    setJoinedChallenges(prev => ({ ...prev, [reelId]: true }));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -69,6 +74,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onOpenTips={handleOpenTips}
         onOpenLeaderboard={handleOpenLeaderboard}
         userScores={userScores}
+        joinedChallenges={joinedChallenges}
       />
 
       <UploadAttemptModal
@@ -84,6 +90,8 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onClose={() => setIsLeaderboardOpen(false)}
         reel={selectedReel}
         athleteId={athleteId}
+        isJoined={selectedReel ? joinedChallenges[selectedReel.id] || false : false}
+        onJoinChallenge={handleJoinChallenge}
       />
 
       <AnalyzeTipsModal
