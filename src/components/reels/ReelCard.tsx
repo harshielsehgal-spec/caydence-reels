@@ -180,7 +180,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         <div className="absolute top-4 left-4 z-20">
           <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center gap-2 shadow-lg shadow-orange-500/30">
             <span className="text-xs font-bold text-white">AI Match</span>
-            <span className="text-sm font-black text-white">92%</span>
+            <span className="text-sm font-black text-white">{userScore > 20 ? `${userScore}%` : '—'}</span>
           </div>
         </div>
 
