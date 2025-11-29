@@ -9,9 +9,10 @@ interface ReelsFeedProps {
   onOpenTips: (reel: Reel) => void;
   onOpenLeaderboard: (reel: Reel) => void;
   userScores?: Record<string, number>;
+  joinedChallenges?: Record<string, boolean>;
 }
 
-const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {} }: ReelsFeedProps) => {
+const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {} }: ReelsFeedProps) => {
   const [visibleReelId, setVisibleReelId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const reelRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -75,6 +76,7 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
             onOpenLeaderboard={onOpenLeaderboard}
             isVisible={visibleReelId === reel.id}
             userScore={userScores[reel.id]}
+            isJoined={joinedChallenges[reel.id]}
           />
         </div>
       ))}

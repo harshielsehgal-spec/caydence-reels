@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Trophy, Scan } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, Share2, Camera, Play, Pause, Trophy, Scan, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Reel } from "@/lib/reels";
 import { toast } from "@/hooks/use-toast";
@@ -12,12 +12,13 @@ interface ReelCardProps {
   onOpenTips: (reel: Reel) => void;
   onOpenLeaderboard: (reel: Reel) => void;
   isVisible: boolean;
-  userScore?: number; // User's best AI Match score for this reel (0-100)
+  userScore?: number;
+  isJoined?: boolean;
 }
 
 // Progress ring component for avatar
 const AvatarProgressRing = ({ score, children }: { score: number; children: React.ReactNode }) => {
-  const size = 48; // Ring outer size
+  const size = 48;
   const strokeWidth = 3;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -26,13 +27,11 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      {/* SVG Progress Ring */}
       <svg
         className="absolute inset-0 -rotate-90"
         width={size}
         height={size}
       >
-        {/* Background track */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -41,7 +40,6 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
           stroke="rgb(51 65 85 / 0.6)"
           strokeWidth={strokeWidth}
         />
-        {/* Progress arc */}
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -54,7 +52,6 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
           strokeDashoffset={circumference - progress}
           className="transition-all duration-500"
         />
-        {/* Gradient definition */}
         <defs>
           <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#FF7A00" />
@@ -62,7 +59,6 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
           </linearGradient>
         </defs>
       </svg>
-      {/* Avatar centered inside */}
       <div className="absolute inset-0 flex items-center justify-center">
         {children}
       </div>
@@ -70,7 +66,7 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
   );
 };
 
-const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, isVisible, userScore = 20 }: ReelCardProps) => {
+const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, isVisible, userScore = 20, isJoined = false }: ReelCardProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -79,7 +75,6 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Autoplay when visible
   useEffect(() => {
     if (videoRef.current) {
       if (isVisible) {
@@ -121,21 +116,26 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const shareUrl = window.location.href;
     const shareData = {
       title: reel.title,
-      text: reel.description || '',
-      url: window.location.href,
+      text: "Check out this Caydence drill!",
+      url: shareUrl,
     };
     
     if (navigator.share) {
       try {
         await navigator.share(shareData);
-      } catch (err) {
-        console.log('Share cancelled');
+      } catch {
+        // User cancelled or share failed silently
       }
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-      toast({ title: "Link copied to clipboard!" });
+    } else if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: "Link copied. Share it with your friends!" });
+      } catch {
+        // Clipboard failed silently
+      }
     }
   };
 
@@ -146,10 +146,8 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
   return (
     <div className="h-[90vh] w-full flex-shrink-0 snap-start snap-always flex items-center justify-center py-4">
-      {/* Phone Frame Container */}
       <div className="relative w-[90vw] max-w-sm h-full rounded-[32px] overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl">
         
-        {/* Full-screen Video */}
         <video
           ref={videoRef}
           src={reel.video_url}
@@ -159,12 +157,10 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           playsInline
         />
         
-        {/* Play/Pause Tap Area */}
         <button 
           onClick={togglePlay}
           className="absolute inset-0 z-10"
         >
-          {/* Center Play/Pause Button */}
           <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
             <div className="w-16 h-16 rounded-full bg-slate-900/60 backdrop-blur-md flex items-center justify-center border border-white/20">
               {isPlaying ? (
@@ -184,13 +180,18 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           </div>
         </div>
 
-        {/* Top Right - Trophy Leaderboard Icon */}
+        {/* Top Right - Trophy Leaderboard Icon with Joined Badge */}
         <button 
           onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
           className="absolute top-4 right-4 z-20"
         >
-          <div className="p-2 rounded-lg bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-[#FF7A00] transition-colors">
+          <div className="relative p-2 rounded-lg bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-[#FF7A00] transition-colors">
             <Trophy className="w-5 h-5 text-[#FF7A00]" />
+            {isJoined && (
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#FF7A00] flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-white" />
+              </div>
+            )}
           </div>
         </button>
 
@@ -207,7 +208,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             <span className="text-xs font-semibold text-white drop-shadow-lg">{formatCount(likesCount)}</span>
           </button>
 
-          {/* Comments / Insights */}
+          {/* Chat */}
           <button 
             onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }}
             className="flex flex-col items-center gap-1 group"
@@ -243,7 +244,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
         {/* Bottom Gradient Overlay with Content */}
         <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent pt-20 pb-6 px-4">
-          {/* Creator Info */}
+          {/* Creator Info - Compact row with Follow button */}
           <div className="flex items-center gap-3 mb-3">
             <AvatarProgressRing score={userScore}>
               <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center text-sm font-bold text-white">
@@ -251,19 +252,21 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
               </div>
             </AvatarProgressRing>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-white">{reel.creator_username}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-sm text-white">{reel.creator_username}</p>
+                <button 
+                  onClick={handleFollow}
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
+                    isFollowing 
+                      ? 'bg-[#FF7A00] text-white' 
+                      : 'border border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00] hover:text-white'
+                  }`}
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              </div>
               <p className="text-xs text-gray-400">{reel.creator_title}</p>
             </div>
-            <button 
-              onClick={handleFollow}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                isFollowing 
-                  ? 'bg-[#FF7A00] text-white border border-[#FF7A00]' 
-                  : 'border border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00] hover:text-white'
-              }`}
-            >
-              {isFollowing ? 'Following' : 'Follow'}
-            </button>
           </div>
 
           {/* Title & Description */}
@@ -291,7 +294,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           </div>
         </div>
 
-        {/* Comments Sheet */}
+        {/* Chat Panel */}
         <CommentsSheet 
           isOpen={isCommentsOpen} 
           onClose={() => setIsCommentsOpen(false)} 
