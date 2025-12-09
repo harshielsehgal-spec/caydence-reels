@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { X, MessageCircle, Send, Flame, ThumbsUp, Trophy, Sparkles, Lightbulb } from "lucide-react";
+import { X, MessageCircle, Send, Lightbulb } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -17,10 +17,10 @@ interface CommentsSheetProps {
 }
 
 const quickReactions = [
-  { emoji: "🔥", icon: Flame, label: "Fire" },
-  { emoji: "👏", icon: ThumbsUp, label: "Clap" },
-  { emoji: "💯", icon: Trophy, label: "Perfect" },
-  { emoji: "🤯", icon: Sparkles, label: "Mind-blown" },
+  { emoji: "🔥", label: "Fire" },
+  { emoji: "👏", label: "Clap" },
+  { emoji: "💯", label: "Perfect" },
+  { emoji: "🤯", label: "Mind-blown" },
 ];
 
 const pinnedTip = "Coach Tip: Focus on wrist snap for better release.";
@@ -68,47 +68,54 @@ const CommentsSheet = ({ isOpen, onClose }: CommentsSheetProps) => {
     }
   };
 
+  const handleReaction = (emoji: string) => {
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      name: "You",
+      text: emoji,
+      isUser: true,
+    };
+    setMessages((prev) => [...prev, newMessage]);
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="bottom" 
-        className="bg-card border-border text-foreground rounded-t-3xl h-[70vh] flex flex-col"
+        className="bg-card border-t border-border text-foreground rounded-t-3xl h-[75vh] flex flex-col p-0"
       >
-        <SheetHeader className="flex flex-row items-center justify-between mb-3 flex-shrink-0">
+        {/* Drag Handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+        </div>
+
+        <SheetHeader className="flex flex-row items-center justify-between px-4 pb-3 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <MessageCircle className="w-5 h-5 text-primary" />
-            <SheetTitle className="text-foreground text-lg font-bold">Chat</SheetTitle>
+            <SheetTitle className="text-foreground text-lg font-bold">Comments</SheetTitle>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+            className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4 text-foreground" />
           </button>
         </SheetHeader>
 
         {/* Pinned Tip */}
-        <div className="flex items-center gap-2 px-3 py-2 mb-3 rounded-lg bg-primary/10 border border-primary/30">
+        <div className="flex items-center gap-2 mx-4 mt-3 px-3 py-2.5 rounded-xl bg-primary/10 border border-primary/20">
           <Lightbulb className="w-4 h-4 text-primary flex-shrink-0" />
           <p className="text-xs text-primary font-medium">{pinnedTip}</p>
         </div>
 
         {/* Quick Reactions */}
-        <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border/50">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
           <span className="text-xs text-muted-foreground mr-1">React:</span>
           {quickReactions.map((reaction) => (
             <button
               key={reaction.label}
-              onClick={() => {
-                const newMessage: ChatMessage = {
-                  id: Date.now().toString(),
-                  name: "You",
-                  text: reaction.emoji,
-                  isUser: true,
-                };
-                setMessages((prev) => [...prev, newMessage]);
-              }}
-              className="w-8 h-8 rounded-full bg-secondary/80 flex items-center justify-center hover:bg-primary/20 hover:scale-110 transition-all duration-200 text-base"
+              onClick={() => handleReaction(reaction.emoji)}
+              className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center hover:bg-primary/20 hover:scale-110 active:scale-95 transition-all duration-200 text-lg"
             >
               {reaction.emoji}
             </button>
@@ -116,16 +123,16 @@ const CommentsSheet = ({ isOpen, onClose }: CommentsSheetProps) => {
         </div>
 
         {/* Messages List */}
-        <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {messages.map((message) => (
             <div 
               key={message.id}
               className={`flex gap-3 ${message.isUser ? 'flex-row-reverse' : ''}`}
             >
-              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-foreground ${
+              <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${
                 message.isUser 
-                  ? 'bg-primary' 
-                  : 'bg-gradient-to-r from-secondary to-muted'
+                  ? 'gradient-primary text-primary-foreground' 
+                  : 'bg-secondary text-foreground'
               }`}>
                 {message.name[0]}
               </div>
@@ -133,10 +140,10 @@ const CommentsSheet = ({ isOpen, onClose }: CommentsSheetProps) => {
                 <p className={`text-xs text-muted-foreground mb-1 ${message.isUser ? 'text-right' : ''}`}>
                   {message.name}
                 </p>
-                <div className={`rounded-2xl px-4 py-2 ${
+                <div className={`rounded-2xl px-4 py-2.5 ${
                   message.isUser 
-                    ? 'bg-primary text-primary-foreground rounded-br-md' 
-                    : 'bg-secondary/80 text-foreground rounded-bl-md'
+                    ? 'gradient-primary text-primary-foreground rounded-br-md' 
+                    : 'bg-secondary text-foreground rounded-bl-md'
                 }`}>
                   <p className="text-sm leading-relaxed">{message.text}</p>
                 </div>
@@ -146,19 +153,20 @@ const CommentsSheet = ({ isOpen, onClose }: CommentsSheetProps) => {
         </div>
 
         {/* Input Area */}
-        <div className="flex-shrink-0 pt-3 border-t border-border">
+        <div className="flex-shrink-0 px-4 py-3 border-t border-border bg-card">
           <div className="flex items-center gap-2">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className="flex-1 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
+              placeholder="Add a comment..."
+              className="flex-1 bg-secondary border-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-full px-4"
             />
             <Button
               onClick={handleSend}
               disabled={!inputValue.trim()}
-              className="h-10 w-10 p-0 bg-primary hover:bg-primary/90 disabled:opacity-50"
+              size="icon"
+              className="h-10 w-10 rounded-full gradient-primary hover:opacity-90 disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
             </Button>

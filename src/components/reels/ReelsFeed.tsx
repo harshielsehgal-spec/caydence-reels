@@ -51,7 +51,7 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
 
   if (reels.length === 0) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center bg-background">
         <p className="text-muted-foreground">No reels available</p>
       </div>
     );
@@ -60,13 +60,14 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
   return (
     <div 
       ref={containerRef}
-      className="h-screen overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+      className="h-screen w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-background"
     >
       {reels.map((reel) => (
         <div 
           key={reel.id} 
           ref={setReelRef(reel.id)}
           data-reel-id={reel.id}
+          className="h-screen w-full snap-start snap-always"
         >
           <ReelCard
             reel={reel}

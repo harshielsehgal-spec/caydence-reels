@@ -18,38 +18,39 @@
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 100%;
 
-    /* Caydence Orange #FF6A00 */
-    --primary: 25 100% 50%;
-    --primary-foreground: 0 0% 0%;
+    /* Caydence Orange - Darker, richer gradient: #FF6A00 → #FF5300 */
+    --primary: 23 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 18 100% 48%;
 
     /* Secondary surfaces */
-    --secondary: 0 0% 10%;
+    --secondary: 0 0% 8%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Muted/Grey #CCCCCC */
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 80%;
+    /* Muted/Grey */
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 25 100% 50%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 23 100% 50%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 25 100% 50%;
+    --border: 0 0% 15%;
+    --input: 0 0% 12%;
+    --ring: 23 100% 50%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Caydence Gradient */
-    --gradient-primary: linear-gradient(135deg, hsl(25, 100%, 50%) 0%, hsl(14, 100%, 50%) 100%);
-    --gradient-glow: linear-gradient(180deg, hsl(25, 100%, 50%, 0.3) 0%, transparent 100%);
+    /* Caydence Gradient - Darker, richer orange */
+    --gradient-primary: linear-gradient(135deg, hsl(23, 100%, 50%) 0%, hsl(18, 100%, 48%) 100%);
+    --gradient-glow: linear-gradient(180deg, hsl(23, 100%, 50%, 0.4) 0%, transparent 100%);
     
     /* Shadows */
-    --shadow-soft: 0 4px 24px -4px hsl(0 0% 0% / 0.5);
-    --shadow-glow: 0 0 40px hsl(25, 100%, 50%, 0.3);
-    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.6);
+    --shadow-soft: 0 4px 24px -4px hsl(0 0% 0% / 0.6);
+    --shadow-glow: 0 0 30px hsl(23, 100%, 50%, 0.35);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.7);
 
     /* Sidebar */
     --sidebar-background: 0 0% 4%;
@@ -69,19 +70,20 @@
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 100%;
-    --primary: 25 100% 50%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%;
+    --primary: 23 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 18 100% 48%;
+    --secondary: 0 0% 8%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 80%;
-    --accent: 25 100% 50%;
-    --accent-foreground: 0 0% 0%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 23 100% 50%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 25 100% 50%;
+    --border: 0 0% 15%;
+    --input: 0 0% 12%;
+    --ring: 23 100% 50%;
   }
 }
 

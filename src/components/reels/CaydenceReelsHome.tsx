@@ -8,14 +8,8 @@ import DailyChallengeTile from "./DailyChallengeTile";
 import CoinsHeader from "./CoinsHeader";
 import ReelTile from "./ReelTile";
 
-// Demo data for sports categories and challenge tags
-const sportCategories: Record<string, string> = {
-  "Bowling Masterclass": "Cricket",
-  "Perfect Yorker": "Cricket",
-  "Spin Technique": "Cricket",
-};
-
-const challengeReelIds = new Set<string>(); // Will be populated with first reel
+// Demo data for challenge tags
+const challengeReelIds = new Set<string>();
 
 const CaydenceReelsHome = () => {
   const [reels, setReels] = useState<Reel[]>([]);
@@ -42,7 +36,6 @@ const CaydenceReelsHome = () => {
 
   const handleReelClick = (reel: Reel) => {
     console.log("Reel tapped:", reel.id);
-    // Navigate to full-screen reels player
     navigate("/");
   };
 
@@ -59,10 +52,8 @@ const CaydenceReelsHome = () => {
   const getFilteredReels = (): Reel[] => {
     switch (activeTab) {
       case "trending":
-        // Sort by likes_count (simulating popularity)
         return [...reels].sort((a, b) => b.likes_count - a.likes_count);
       case "challenges":
-        // Only show challenge-tagged reels
         return reels.filter((r) => challengeReelIds.has(r.id));
       case "for-you":
       default:
@@ -84,12 +75,13 @@ const CaydenceReelsHome = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+    <div className="min-h-screen bg-background max-w-[420px] mx-auto">
+      {/* Instagram-style Top Bar */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md">
+        {/* Logo + Coins Row */}
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold text-foreground">
-            <span className="text-primary">Caydence</span> Reels
+          <h1 className="text-xl font-bold font-display">
+            <span className="text-primary">Caydence</span>
           </h1>
           <CoinsHeader
             coins={coins}
@@ -98,7 +90,7 @@ const CaydenceReelsHome = () => {
           />
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Minimal Tabs with underline indicator */}
         <HomeTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </header>
 
@@ -106,7 +98,7 @@ const CaydenceReelsHome = () => {
       <QuestStrip onCoinsEarned={handleCoinsEarned} />
 
       {/* Grid Container */}
-      <div className="px-1 py-2">
+      <div className="px-1 pb-4">
         {filteredReels.length === 0 && activeTab !== "for-you" ? (
           <div className="flex flex-col items-center justify-center h-64 gap-2">
             <p className="text-muted-foreground">No reels in this category yet</p>
@@ -127,11 +119,9 @@ const CaydenceReelsHome = () => {
               />
             )}
 
-            {/* Reel Tiles */}
+            {/* Reel Tiles with staggered heights */}
             {filteredReels.map((reel, index) => {
-              // Staggered heights for Instagram Explore feel
               const isLarge = activeTab === "for-you" ? (index + 2) % 5 === 0 : index % 5 === 0;
-
               return (
                 <ReelTile
                   key={reel.id}
