@@ -1,6 +1,4 @@
-import { cn } from "@/lib/utils";
-
-type TabType = "for-you" | "trending" | "challenges";
+export type TabType = "for-you" | "trending" | "challenges";
 
 interface HomeTabsProps {
   activeTab: TabType;
@@ -15,19 +13,21 @@ const tabs: { id: TabType; label: string }[] = [
 
 const HomeTabs = ({ activeTab, onTabChange }: HomeTabsProps) => {
   return (
-    <div className="flex items-center gap-1 px-4 py-3 border-b border-border/50">
+    <div className="flex items-center justify-center gap-6 px-4 py-2 border-b border-border/30">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={cn(
-            "px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
+          className={`relative text-sm font-semibold transition-colors pb-2 ${
             activeTab === tab.id
-              ? "bg-primary text-primary-foreground"
-              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-          )}
+              ? "text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
         >
           {tab.label}
+          {activeTab === tab.id && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+          )}
         </button>
       ))}
     </div>
@@ -35,4 +35,3 @@ const HomeTabs = ({ activeTab, onTabChange }: HomeTabsProps) => {
 };
 
 export default HomeTabs;
-export type { TabType };

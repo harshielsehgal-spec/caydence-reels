@@ -53,7 +53,7 @@ const ReelTile = ({ reel, isLarge = false, onClick }: ReelTileProps) => {
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
 
       {/* Sport Badge */}
-      <Badge className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-[10px] px-2 py-0.5 font-semibold border-0">
+      <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 font-semibold border-0">
         {getSportCategory(reel.title)}
       </Badge>
 

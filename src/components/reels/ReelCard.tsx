@@ -18,8 +18,8 @@ interface ReelCardProps {
 
 // Progress ring component for avatar
 const AvatarProgressRing = ({ score, children }: { score: number; children: React.ReactNode }) => {
-  const size = 48;
-  const strokeWidth = 3;
+  const size = 44;
+  const strokeWidth = 2.5;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
@@ -37,7 +37,7 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgb(51 65 85 / 0.6)"
+          stroke="hsl(var(--border))"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -45,7 +45,7 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={hasAttempted ? "url(#orangeGradient)" : "rgb(71 85 105 / 0.5)"}
+          stroke={hasAttempted ? "url(#orangeGradientRing)" : "hsl(var(--muted))"}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -53,9 +53,9 @@ const AvatarProgressRing = ({ score, children }: { score: number; children: Reac
           className="transition-all duration-500"
         />
         <defs>
-          <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FF7A00" />
-            <stop offset="100%" stopColor="#FF5C00" />
+          <linearGradient id="orangeGradientRing" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="hsl(23, 100%, 50%)" />
+            <stop offset="100%" stopColor="hsl(18, 100%, 48%)" />
           </linearGradient>
         </defs>
       </svg>
@@ -132,7 +132,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
     } else if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        toast({ title: "Link copied. Share it with your friends!" });
+        toast({ title: "Link copied." });
       } catch {
         // Clipboard failed silently
       }
@@ -145,28 +145,32 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
   };
 
   return (
-    <div className="h-[90vh] w-full flex-shrink-0 snap-start snap-always flex items-center justify-center py-4">
-      <div className="relative w-[90vw] max-w-sm h-full rounded-[32px] overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl">
+    <div className="h-screen w-full flex-shrink-0 snap-start snap-always flex items-center justify-center bg-background">
+      {/* Mobile-first container - max-width for desktop centering like TikTok */}
+      <div className="relative w-full max-w-[420px] h-full mx-auto">
+        {/* Video fills container with rounded corners */}
+        <div className="absolute inset-0 overflow-hidden rounded-xl md:rounded-2xl">
+          <video
+            ref={videoRef}
+            src={reel.video_url}
+            className="w-full h-full object-cover"
+            muted
+            loop
+            playsInline
+          />
+        </div>
         
-        <video
-          ref={videoRef}
-          src={reel.video_url}
-          className="absolute inset-0 w-full h-full object-cover"
-          muted
-          loop
-          playsInline
-        />
-        
+        {/* Play/Pause overlay */}
         <button 
           onClick={togglePlay}
           className="absolute inset-0 z-10"
         >
           <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}>
-            <div className="w-16 h-16 rounded-full bg-slate-900/60 backdrop-blur-md flex items-center justify-center border border-white/20">
+            <div className="w-16 h-16 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
               {isPlaying ? (
-                <Pause className="w-7 h-7 text-white" />
+                <Pause className="w-7 h-7 text-foreground" />
               ) : (
-                <Play className="w-7 h-7 text-white fill-white ml-1" />
+                <Play className="w-7 h-7 text-foreground fill-foreground ml-1" />
               )}
             </div>
           </div>
@@ -174,49 +178,34 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
         {/* Top Left - AI Match Badge */}
         <div className="absolute top-4 left-4 z-20">
-          <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center gap-2 shadow-lg shadow-orange-500/30">
-            <span className="text-xs font-bold text-white">AI Match</span>
-            <span className="text-sm font-black text-white">{userScore > 20 ? `${userScore}%` : '—'}</span>
+          <div className="px-3 py-1.5 rounded-full gradient-primary flex items-center gap-2 glow-orange">
+            <span className="text-xs font-bold text-primary-foreground">AI Match</span>
+            <span className="text-sm font-black text-primary-foreground">{userScore > 20 ? `${userScore}%` : '—'}</span>
           </div>
         </div>
 
-        {/* Top Right - Trophy Leaderboard Icon with Joined Badge */}
-        <button 
-          onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
-          className="absolute top-4 right-4 z-20"
-        >
-          <div className="relative p-2 rounded-lg bg-slate-900/60 backdrop-blur-md border border-white/10 hover:border-[#FF7A00] transition-colors">
-            <Trophy className="w-5 h-5 text-[#FF7A00]" />
-            {isJoined && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#FF7A00] flex items-center justify-center">
-                <Check className="w-2.5 h-2.5 text-white" />
-              </div>
-            )}
-          </div>
-        </button>
-
-        {/* Right Side - Engagement Buttons */}
-        <div className="absolute right-3 top-1/3 flex flex-col items-center gap-5 z-20">
+        {/* Right Side - Floating Action Bar */}
+        <div className="absolute right-3 bottom-48 flex flex-col items-center gap-4 z-20">
           {/* Like */}
           <button 
             onClick={handleLike}
             className="flex flex-col items-center gap-1 group"
           >
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${liked ? 'bg-[#FF7A00]/30' : 'bg-slate-900/60 backdrop-blur-md'}`}>
-              <Heart className={`w-6 h-6 transition-all ${liked ? 'text-[#FF7A00] fill-[#FF7A00] scale-110' : 'text-white group-hover:text-[#FF7A00]'}`} />
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${liked ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
+              <Heart className={`w-6 h-6 transition-all ${liked ? 'text-primary fill-primary scale-110' : 'text-foreground group-hover:text-primary'}`} />
             </div>
-            <span className="text-xs font-semibold text-white drop-shadow-lg">{formatCount(likesCount)}</span>
+            <span className="text-xs font-semibold text-foreground drop-shadow-lg">{formatCount(likesCount)}</span>
           </button>
 
-          {/* Chat */}
+          {/* Comments */}
           <button 
             onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }}
             className="flex flex-col items-center gap-1 group"
           >
-            <div className="w-12 h-12 rounded-full bg-slate-900/60 backdrop-blur-md flex items-center justify-center">
-              <MessageCircle className="w-6 h-6 text-white group-hover:text-[#FF7A00] transition-colors" />
+            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+              <MessageCircle className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
-            <span className="text-xs font-semibold text-white drop-shadow-lg">{formatCount(reel.comments_count)}</span>
+            <span className="text-xs font-semibold text-foreground drop-shadow-lg">{formatCount(reel.comments_count)}</span>
           </button>
 
           {/* Save */}
@@ -224,10 +213,10 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             onClick={handleSave}
             className="flex flex-col items-center gap-1 group"
           >
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${saved ? 'bg-[#FF7A00]/30' : 'bg-slate-900/60 backdrop-blur-md'}`}>
-              <Bookmark className={`w-6 h-6 transition-all ${saved ? 'text-[#FF7A00] fill-[#FF7A00]' : 'text-white group-hover:text-[#FF7A00]'}`} />
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${saved ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
+              <Bookmark className={`w-6 h-6 transition-all ${saved ? 'text-primary fill-primary' : 'text-foreground group-hover:text-primary'}`} />
             </div>
-            <span className="text-xs font-semibold text-white drop-shadow-lg">{saved ? 'Saved' : 'Save'}</span>
+            <span className="text-xs font-semibold text-foreground drop-shadow-lg">{saved ? 'Saved' : 'Save'}</span>
           </button>
 
           {/* Share */}
@@ -235,66 +224,87 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             onClick={handleShare}
             className="flex flex-col items-center gap-1 group"
           >
-            <div className="w-12 h-12 rounded-full bg-slate-900/60 backdrop-blur-md flex items-center justify-center">
-              <Share2 className="w-6 h-6 text-white group-hover:text-[#FF7A00] transition-colors" />
+            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+              <Share2 className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
-            <span className="text-xs font-semibold text-white drop-shadow-lg">Share</span>
+            <span className="text-xs font-semibold text-foreground drop-shadow-lg">Share</span>
+          </button>
+
+          {/* Trophy/Challenge */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
+            className="flex flex-col items-center gap-1 group relative"
+          >
+            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <Trophy className="w-6 h-6 text-primary" />
+            </div>
+            {isJoined && (
+              <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-primary-foreground" />
+              </div>
+            )}
           </button>
         </div>
 
-        {/* Bottom Gradient Overlay with Content */}
-        <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-slate-950/90 via-slate-950/50 to-transparent pt-20 pb-6 px-4">
-          {/* Creator Info - Compact row with Follow button */}
-          <div className="flex items-center gap-3 mb-3">
-            <AvatarProgressRing score={userScore}>
-              <div className="w-9 h-9 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center text-sm font-bold text-white">
-                {reel.creator_initials}
+        {/* Bottom Caption Module - Instagram style */}
+        <div className="absolute inset-x-0 bottom-0 z-20">
+          {/* Gradient overlay for readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          
+          <div className="relative px-4 pb-6 pt-16">
+            {/* Creator Info Row */}
+            <div className="flex items-center gap-3 mb-3">
+              <AvatarProgressRing score={userScore}>
+                <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
+                  {reel.creator_initials}
+                </div>
+              </AvatarProgressRing>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-sm text-foreground">@{reel.creator_username}</p>
+                  <button 
+                    onClick={handleFollow}
+                    className={`px-3 py-0.5 rounded-md text-xs font-semibold transition-all ${
+                      isFollowing 
+                        ? 'bg-secondary text-foreground' 
+                        : 'bg-primary text-primary-foreground hover:opacity-90'
+                    }`}
+                  >
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">{reel.creator_title}</p>
               </div>
-            </AvatarProgressRing>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-sm text-white">{reel.creator_username}</p>
-                <button 
-                  onClick={handleFollow}
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
-                    isFollowing 
-                      ? 'bg-[#FF7A00] text-white' 
-                      : 'border border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00] hover:text-white'
-                  }`}
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
-              </div>
-              <p className="text-xs text-gray-400">{reel.creator_title}</p>
             </div>
-          </div>
 
-          {/* Title & Description */}
-          <h3 className="text-white font-bold text-base mb-1">{reel.title}</h3>
-          <p className="text-sm text-gray-300 leading-relaxed mb-4">
-            {reel.description}
-            {reel.hashtags && <span className="text-[#FF7A00]"> {reel.hashtags}</span>}
-          </p>
+            {/* Title & Description */}
+            <h3 className="text-foreground font-bold text-base mb-1">{reel.title}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-2">
+              {reel.description}
+              {reel.hashtags && <span className="text-primary"> {reel.hashtags}</span>}
+            </p>
 
-          {/* CTA Buttons */}
-          <div className="flex items-center gap-3">
-            <Button 
-              onClick={(e) => { e.stopPropagation(); onOpenTips(reel); }}
-              className="flex-1 h-11 justify-center gap-2 bg-slate-800/80 backdrop-blur-md border border-white/10 text-white hover:bg-slate-700/80"
-            >
-              <Scan className="w-4 h-4" />
-              Analyze This Move
-            </Button>
-            <button 
-              onClick={(e) => { e.stopPropagation(); onAnalyze(reel); }}
-              className="w-11 h-11 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center shadow-lg shadow-orange-500/30 hover:scale-105 transition-transform"
-            >
-              <Camera className="w-5 h-5 text-white" />
-            </button>
+            {/* CTA Buttons */}
+            <div className="flex items-center gap-3">
+              <Button 
+                onClick={(e) => { e.stopPropagation(); onOpenTips(reel); }}
+                className="flex-1 h-11 justify-center gap-2 bg-secondary/80 backdrop-blur-sm border border-border text-foreground hover:bg-secondary"
+              >
+                <Scan className="w-4 h-4" />
+                Analyze This Move
+              </Button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onAnalyze(reel); }}
+                className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center glow-orange hover:scale-105 transition-transform"
+              >
+                <Camera className="w-5 h-5 text-primary-foreground" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Chat Panel */}
+        {/* Comments Sheet */}
         <CommentsSheet 
           isOpen={isCommentsOpen} 
           onClose={() => setIsCommentsOpen(false)} 

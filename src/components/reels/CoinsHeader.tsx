@@ -40,8 +40,8 @@ const CoinsHeader = ({ coins, pendingAnimation, onAnimationComplete }: CoinsHead
   }, [coins, pendingAnimation, onAnimationComplete]);
 
   return (
-    <div className="relative flex items-center gap-1.5 bg-secondary/80 border border-border/50 rounded-full px-3 py-1.5">
-      <Coins className="w-4 h-4 text-yellow-400" />
+    <div className="relative flex items-center gap-1.5 bg-secondary border border-border rounded-full px-3 py-1.5">
+      <Coins className="w-4 h-4 text-primary" />
       <span className="text-sm font-bold text-foreground">{displayCoins}</span>
 
       {/* Floating animations */}
