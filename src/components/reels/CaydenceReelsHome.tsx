@@ -1,20 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Reel, fetchReels } from "@/lib/reels";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Eye } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import HomeTabs, { TabType } from "./HomeTabs";
+import QuestStrip from "./QuestStrip";
+import DailyChallengeTile from "./DailyChallengeTile";
+import CoinsHeader from "./CoinsHeader";
+import ReelTile from "./ReelTile";
 
-// Demo data for sports categories
+// Demo data for sports categories and challenge tags
 const sportCategories: Record<string, string> = {
   "Bowling Masterclass": "Cricket",
   "Perfect Yorker": "Cricket",
   "Spin Technique": "Cricket",
 };
 
+const challengeReelIds = new Set<string>(); // Will be populated with first reel
+
 const CaydenceReelsHome = () => {
   const [reels, setReels] = useState<Reel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>("for-you");
+  const [coins, setCoins] = useState(125);
+  const [pendingCoinAnimation, setPendingCoinAnimation] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,30 +33,44 @@ const CaydenceReelsHome = () => {
     setIsLoading(true);
     const data = await fetchReels();
     setReels(data);
+    // Mark first reel as a challenge reel
+    if (data.length > 0) {
+      challengeReelIds.add(data[0].id);
+    }
     setIsLoading(false);
   };
 
   const handleReelClick = (reel: Reel) => {
     console.log("Reel tapped:", reel.id);
-    // Navigate to full-screen reels player (future integration)
+    // Navigate to full-screen reels player
     navigate("/");
   };
 
-  const formatViewCount = (count: number): string => {
-    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-    if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
-    return count.toString();
+  const handleCoinsEarned = (amount: number) => {
+    setPendingCoinAnimation(amount);
+    setCoins((prev) => prev + amount);
   };
 
-  const getSportCategory = (title: string): string => {
-    return sportCategories[title] || "Fitness";
+  const handleAnimationComplete = () => {
+    setPendingCoinAnimation(null);
   };
 
-  // Generate demo view counts
-  const getViewCount = (reelId: string): number => {
-    const hash = reelId.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
-    return (hash % 50 + 1) * 100 + Math.floor(Math.random() * 500);
+  // Filter reels based on active tab
+  const getFilteredReels = (): Reel[] => {
+    switch (activeTab) {
+      case "trending":
+        // Sort by likes_count (simulating popularity)
+        return [...reels].sort((a, b) => b.likes_count - a.likes_count);
+      case "challenges":
+        // Only show challenge-tagged reels
+        return reels.filter((r) => challengeReelIds.has(r.id));
+      case "for-you":
+      default:
+        return reels;
+    }
   };
+
+  const filteredReels = getFilteredReels();
 
   if (isLoading) {
     return (
@@ -64,81 +86,59 @@ const CaydenceReelsHome = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50 px-4 py-3">
-        <h1 className="text-xl font-bold text-foreground">
-          <span className="text-primary">Caydence</span> Reels
-        </h1>
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+        <div className="flex items-center justify-between px-4 py-3">
+          <h1 className="text-xl font-bold text-foreground">
+            <span className="text-primary">Caydence</span> Reels
+          </h1>
+          <CoinsHeader
+            coins={coins}
+            pendingAnimation={pendingCoinAnimation}
+            onAnimationComplete={handleAnimationComplete}
+          />
+        </div>
+
+        {/* Navigation Tabs */}
+        <HomeTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </header>
+
+      {/* Quest Strip */}
+      <QuestStrip onCoinsEarned={handleCoinsEarned} />
 
       {/* Grid Container */}
       <div className="px-1 py-2">
-        {reels.length === 0 ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-muted-foreground">No reels available</p>
+        {filteredReels.length === 0 && activeTab !== "for-you" ? (
+          <div className="flex flex-col items-center justify-center h-64 gap-2">
+            <p className="text-muted-foreground">No reels in this category yet</p>
+            <button
+              onClick={() => setActiveTab("for-you")}
+              className="text-primary text-sm font-medium hover:underline"
+            >
+              Browse all reels
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-1">
-            {reels.map((reel, index) => {
+            {/* Daily Challenge Tile - only show on For You tab */}
+            {activeTab === "for-you" && (
+              <DailyChallengeTile
+                onCoinsEarned={handleCoinsEarned}
+                onNavigateToChallenge={() => navigate("/")}
+              />
+            )}
+
+            {/* Reel Tiles */}
+            {filteredReels.map((reel, index) => {
               // Staggered heights for Instagram Explore feel
-              const isLarge = index % 5 === 0;
-              const heightClass = isLarge ? "aspect-[3/4]" : "aspect-[4/5]";
-              
+              const isLarge = activeTab === "for-you" ? (index + 2) % 5 === 0 : index % 5 === 0;
+
               return (
-                <div
+                <ReelTile
                   key={reel.id}
-                  onClick={() => handleReelClick(reel)}
-                  className={`relative rounded-lg overflow-hidden cursor-pointer group transition-transform duration-200 hover:scale-[0.98] active:scale-95 ${heightClass}`}
-                >
-                  {/* Video Thumbnail / Background */}
-                  <video
-                    src={reel.video_url}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                  
-                  {/* Dark Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  
-                  {/* Sport Badge - Top Right */}
-                  <Badge 
-                    className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-[10px] px-2 py-0.5 font-semibold"
-                  >
-                    {getSportCategory(reel.title)}
-                  </Badge>
-
-                  {/* Bottom Content */}
-                  <div className="absolute bottom-0 left-0 right-0 p-2">
-                    {/* Coach Info - Bottom Left */}
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Avatar className="w-5 h-5 border border-primary/50">
-                        <AvatarFallback className="bg-slate-800 text-[8px] text-foreground">
-                          {reel.creator_initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-[11px] text-white/90 font-medium truncate max-w-[80px]">
-                        @{reel.creator_username}
-                      </span>
-                    </div>
-                    
-                    {/* Title */}
-                    <p className="text-xs text-white font-semibold truncate">
-                      {reel.title}
-                    </p>
-                  </div>
-
-                  {/* View Count - Bottom Right */}
-                  <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 rounded-full px-1.5 py-0.5">
-                    <Eye className="w-3 h-3 text-white/80" />
-                    <span className="text-[10px] text-white/80 font-medium">
-                      {formatViewCount(getViewCount(reel.id))}
-                    </span>
-                  </div>
-
-                  {/* Hover/Tap Overlay */}
-                  <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                </div>
+                  reel={reel}
+                  isLarge={isLarge}
+                  onClick={handleReelClick}
+                />
               );
             })}
           </div>
