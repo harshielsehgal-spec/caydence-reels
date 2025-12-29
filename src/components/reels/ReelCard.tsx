@@ -106,7 +106,11 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
   const handleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSaved(!saved);
+    const newSaved = !saved;
+    setSaved(newSaved);
+    if (newSaved) {
+      toast({ title: "Saved to your drills" });
+    }
   };
 
   const handleFollow = (e: React.MouseEvent) => {
@@ -176,12 +180,25 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           </div>
         </button>
 
-        {/* Top Left - AI Match Badge */}
-        <div className="absolute top-4 left-4 z-20">
+        {/* Top Bar - AI Match Badge & Trophy */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
           <div className="px-3 py-1.5 rounded-full gradient-primary flex items-center gap-2 glow-orange">
             <span className="text-xs font-bold text-primary-foreground">AI Match</span>
             <span className="text-sm font-black text-primary-foreground">{userScore > 20 ? `${userScore}%` : '—'}</span>
           </div>
+          
+          {/* Trophy Icon - Top Right */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
+            className="relative w-10 h-10 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center hover:bg-primary/20 transition-all group"
+          >
+            <Trophy className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+            {isJoined && (
+              <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-primary-foreground" />
+              </div>
+            )}
+          </button>
         </div>
 
         {/* Right Side - Floating Action Bar */}
@@ -228,21 +245,6 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
               <Share2 className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">Share</span>
-          </button>
-
-          {/* Trophy/Challenge */}
-          <button 
-            onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
-            className="flex flex-col items-center gap-1 group relative"
-          >
-            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-              <Trophy className="w-6 h-6 text-primary" />
-            </div>
-            {isJoined && (
-              <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                <Check className="w-2.5 h-2.5 text-primary-foreground" />
-              </div>
-            )}
           </button>
         </div>
 
