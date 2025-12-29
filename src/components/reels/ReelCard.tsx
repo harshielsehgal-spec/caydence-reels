@@ -202,7 +202,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         </div>
 
         {/* Right Side - Floating Action Bar */}
-        <div className="absolute right-3 bottom-48 flex flex-col items-center gap-4 z-20">
+        <div className="absolute right-3 bottom-56 flex flex-col items-center gap-4 z-20">
           {/* Like */}
           <button 
             onClick={handleLike}
@@ -253,7 +253,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           {/* Gradient overlay for readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           
-          <div className="relative px-4 pb-6 pt-16">
+          <div className="relative px-4 pb-24 pt-16">
             {/* Creator Info Row */}
             <div className="flex items-center gap-3 mb-3">
               <AvatarProgressRing score={userScore}>
