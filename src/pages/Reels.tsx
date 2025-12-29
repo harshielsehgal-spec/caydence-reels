@@ -1,11 +1,15 @@
 import ReelsExperience from "@/components/ReelsExperience";
+import BottomNav from "@/components/navigation/BottomNav";
 
-// For demo purposes, using a mock athlete ID
-// In production, this would come from authentication
 const DEMO_ATHLETE_ID = "demo-athlete-123";
 
 const Reels = () => {
-  return <ReelsExperience athleteId={DEMO_ATHLETE_ID} />;
+  return (
+    <div className="relative">
+      <ReelsExperience athleteId={DEMO_ATHLETE_ID} />
+      <BottomNav />
+    </div>
+  );
 };
 
 export default Reels;
