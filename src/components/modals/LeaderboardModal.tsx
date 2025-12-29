@@ -11,7 +11,10 @@ interface LeaderboardModalProps {
   athleteId?: string;
   isJoined?: boolean;
   onJoinChallenge?: (reelId: string) => void;
+  userBestScore?: number;
 }
+
+const DEMO_PLAYERS_JOINED = 124;
 
 // Fallback demo leaderboard when no real data exists
 const fallbackLeaderboard: LeaderboardEntry[] = [
@@ -30,7 +33,7 @@ const fallbackNames: { [key: string]: string } = {
   "demo-5": "Priya Sharma",
 };
 
-const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, onJoinChallenge }: LeaderboardModalProps) => {
+const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, onJoinChallenge, userBestScore }: LeaderboardModalProps) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [userEntry, setUserEntry] = useState<LeaderboardEntry | null>(null);
@@ -108,11 +111,37 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
           )}
         </div>
 
+        {/* Players Joined Count */}
+        <div className="flex items-center justify-center gap-2 py-2 px-4 mx-4 rounded-lg bg-secondary/50 border border-border mb-3">
+          <User className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Players Joined: <span className="text-primary font-bold">{DEMO_PLAYERS_JOINED}</span></span>
+        </div>
+
         {/* Reward Coins Banner */}
         <div className="flex items-center justify-center gap-2 py-3 px-4 mx-4 rounded-xl bg-primary/10 border border-primary/20 mb-4">
           <Coins className="w-5 h-5 text-primary" />
           <span className="text-sm font-semibold text-primary">Earn 50 Caydence Coins</span>
         </div>
+
+        {/* User's Best Score Card */}
+        {userBestScore && userBestScore > 0 && (
+          <div className="mx-4 mb-4 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/20 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Your Best</p>
+                  <p className="text-xs text-muted-foreground">Personal record</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black text-primary">{userBestScore}%</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Join Button */}
         <div className="px-4 mb-4">
@@ -135,27 +164,6 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
             )}
           </Button>
         </div>
-
-        {/* User's Score Card */}
-        {userEntry && (
-          <div className="mx-4 mb-4 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/20 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Your Best</p>
-                  <p className="text-xs text-muted-foreground">{userEntry.attempts_count} attempts</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-black text-primary">{userEntry.best_score}%</p>
-                <p className="text-xs text-muted-foreground">Rank #{userEntry.rank}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Leaderboard Preview - Top 5 */}
         <div className="px-4 pb-4">

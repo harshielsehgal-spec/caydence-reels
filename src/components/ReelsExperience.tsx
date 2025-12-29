@@ -21,6 +21,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
   const [userScores, setUserScores] = useState<Record<string, number>>({});
+  const [userBestScores, setUserBestScores] = useState<Record<string, number>>({});
   const [joinedChallenges, setJoinedChallenges] = useState<Record<string, boolean>>({});
   const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
   const [isGateModalOpen, setIsGateModalOpen] = useState(false);
@@ -63,6 +64,11 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const handleScoreResult = (reelId: string, score: number) => {
     setUserScores(prev => ({ ...prev, [reelId]: score }));
     setAttemptCounts(prev => ({ ...prev, [reelId]: (prev[reelId] ?? 0) + 1 }));
+    // Update best score if this score is higher
+    setUserBestScores(prev => {
+      const currentBest = prev[reelId] ?? 0;
+      return score > currentBest ? { ...prev, [reelId]: score } : prev;
+    });
   };
 
   const handleWatchAd = () => {
@@ -129,6 +135,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         athleteId={athleteId}
         isJoined={selectedReel ? joinedChallenges[selectedReel.id] || false : false}
         onJoinChallenge={handleJoinChallenge}
+        userBestScore={selectedReel ? userBestScores[selectedReel.id] : undefined}
       />
 
       <AnalyzeTipsModal
