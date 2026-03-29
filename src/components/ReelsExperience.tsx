@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import ReelsFeed from "./reels/ReelsFeed";
 import UploadAttemptModal from "./modals/UploadAttemptModal";
+import ScoreRevealModal from "./modals/ScoreRevealModal";
 import LeaderboardModal from "./modals/LeaderboardModal";
 import AnalyzeTipsModal from "./modals/AnalyzeTipsModal";
 import AttemptGateModal from "./modals/AttemptGateModal";
@@ -18,19 +19,21 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isScoreRevealOpen, setIsScoreRevealOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isTipsModalOpen, setIsTipsModalOpen] = useState(false);
   const [userScores, setUserScores] = useState<Record<string, number>>({});
   const [userBestScores, setUserBestScores] = useState<Record<string, number>>({});
   const [joinedChallenges, setJoinedChallenges] = useState<Record<string, boolean>>({});
   const [attemptCounts, setAttemptCounts] = useState<Record<string, number>>({});
+  const [attemptHistories, setAttemptHistories] = useState<Record<string, { score: number }[]>>({});
   const [isGateModalOpen, setIsGateModalOpen] = useState(false);
   const [isAdModalOpen, setIsAdModalOpen] = useState(false);
   const [gatedReelId, setGatedReelId] = useState<string | null>(null);
+  const [lastScore, setLastScore] = useState(0);
+  const [lastCoins, setLastCoins] = useState(0);
 
-  useEffect(() => {
-    loadReels();
-  }, []);
+  useEffect(() => { loadReels(); }, []);
 
   const loadReels = async () => {
     setIsLoading(true);
@@ -62,13 +65,31 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   };
 
   const handleScoreResult = (reelId: string, score: number) => {
+    const coins = Math.floor(score / 10) + 10;
+    setLastScore(score);
+    setLastCoins(coins);
+
     setUserScores(prev => ({ ...prev, [reelId]: score }));
     setAttemptCounts(prev => ({ ...prev, [reelId]: (prev[reelId] ?? 0) + 1 }));
-    // Update best score if this score is higher
     setUserBestScores(prev => {
       const currentBest = prev[reelId] ?? 0;
       return score > currentBest ? { ...prev, [reelId]: score } : prev;
     });
+    setAttemptHistories(prev => ({
+      ...prev,
+      [reelId]: [...(prev[reelId] || []), { score }],
+    }));
+
+    // Close upload, open cinematic reveal
+    setIsUploadModalOpen(false);
+    setTimeout(() => setIsScoreRevealOpen(true), 300);
+  };
+
+  const handleTryAgainFromReveal = () => {
+    setIsScoreRevealOpen(false);
+    if (selectedReel) {
+      setTimeout(() => handleAnalyze(selectedReel), 300);
+    }
   };
 
   const handleWatchAd = () => {
@@ -101,7 +122,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-[#FF7A00] animate-spin" />
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
           <p className="text-muted-foreground">Loading reels...</p>
         </div>
       </div>
@@ -118,6 +139,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onOpenLeaderboard={handleOpenLeaderboard}
         userScores={userScores}
         joinedChallenges={joinedChallenges}
+        attemptHistories={attemptHistories}
       />
 
       <UploadAttemptModal
@@ -126,6 +148,15 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         reel={selectedReel}
         athleteId={athleteId || ''}
         onResult={handleScoreResult}
+      />
+
+      <ScoreRevealModal
+        isOpen={isScoreRevealOpen}
+        onClose={() => setIsScoreRevealOpen(false)}
+        reel={selectedReel}
+        score={lastScore}
+        coins={lastCoins}
+        onTryAgain={handleTryAgainFromReveal}
       />
 
       <LeaderboardModal
@@ -152,10 +183,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onPay={handlePayDemo}
       />
 
-      <AdModal
-        isOpen={isAdModalOpen}
-        onComplete={handleAdComplete}
-      />
+      <AdModal isOpen={isAdModalOpen} onComplete={handleAdComplete} />
     </div>
   );
 };
