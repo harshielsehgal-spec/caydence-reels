@@ -36,7 +36,8 @@ const getBadge = (score: number) => {
   return { label: "Keep Training ⚡", icon: Zap, tier: "training" as const };
 };
 
-const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport = "gym", onTryAgain }: ScoreRevealModalProps) => {
+const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, onTryAgain }: ScoreRevealModalProps) => {
+  const resolvedSport = sport || reel?.sport || "gym";
   const [displayScore, setDisplayScore] = useState(0);
   const [phase, setPhase] = useState<"counting" | "breakdown" | "complete" | "card">("counting");
   const [breakdown, setBreakdown] = useState<ScoreBreakdown>({ armAlignment: 0, hipPosition: 0, timingSync: 0 });
