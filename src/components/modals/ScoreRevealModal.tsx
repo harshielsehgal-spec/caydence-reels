@@ -17,6 +17,7 @@ interface ScoreRevealModalProps {
   reel: Reel | null;
   score: number;
   coins: number;
+  sport?: string;
   onTryAgain: () => void;
 }
 
