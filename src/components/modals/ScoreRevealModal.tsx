@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Share2, RotateCcw, Flame, Dumbbell, Zap } from "lucide-react";
 import { Reel } from "@/lib/reels";
+import AthleteCard from "@/components/reels/AthleteCard";
 
 interface ScoreBreakdown {
   armAlignment: number;
