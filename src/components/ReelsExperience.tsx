@@ -156,6 +156,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         reel={selectedReel}
         score={lastScore}
         coins={lastCoins}
+        sport="cricket"
         onTryAgain={handleTryAgainFromReveal}
       />
 
