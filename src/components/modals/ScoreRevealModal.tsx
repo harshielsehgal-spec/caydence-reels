@@ -141,7 +141,7 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, onTryAga
               armAlignment={breakdown.armAlignment}
               hipPosition={breakdown.hipPosition}
               timingSync={breakdown.timingSync}
-              sport={sport}
+              sport={resolvedSport}
               username="You"
               onShare={handleShare}
               onContinue={() => { onClose(); onTryAgain(); }}
