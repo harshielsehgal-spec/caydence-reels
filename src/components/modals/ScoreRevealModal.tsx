@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Share2, RotateCcw, Flame, Dumbbell, Zap } from "lucide-react";
 import { Reel } from "@/lib/reels";
+import AthleteCard from "@/components/reels/AthleteCard";
 
 interface ScoreBreakdown {
   armAlignment: number;
@@ -16,6 +17,7 @@ interface ScoreRevealModalProps {
   reel: Reel | null;
   score: number;
   coins: number;
+  sport?: string;
   onTryAgain: () => void;
 }
 
@@ -34,9 +36,9 @@ const getBadge = (score: number) => {
   return { label: "Keep Training ⚡", icon: Zap, tier: "training" as const };
 };
 
-const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, onTryAgain }: ScoreRevealModalProps) => {
+const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport = "gym", onTryAgain }: ScoreRevealModalProps) => {
   const [displayScore, setDisplayScore] = useState(0);
-  const [phase, setPhase] = useState<"counting" | "breakdown" | "complete">("counting");
+  const [phase, setPhase] = useState<"counting" | "breakdown" | "complete" | "card">("counting");
   const [breakdown, setBreakdown] = useState<ScoreBreakdown>({ armAlignment: 0, hipPosition: 0, timingSync: 0 });
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCoins, setShowCoins] = useState(false);
@@ -71,6 +73,7 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, onTryAgain }: S
         setTimeout(() => {
           setPhase("complete");
           setShowCoins(true);
+          setTimeout(() => setPhase("card"), 1800);
         }, 800);
       }
     };
@@ -129,139 +132,128 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, onTryAgain }: S
           </div>
         )}
 
-        <div className="relative p-6 flex flex-col items-center">
-          {/* Score Ring */}
-          <div className="relative my-4" style={{ width: ringSize, height: ringSize }}>
-            <svg className="absolute inset-0 -rotate-90" width={ringSize} height={ringSize}>
-              <circle
-                cx={ringSize / 2} cy={ringSize / 2} r={radius}
-                fill="none" stroke="hsl(var(--border))" strokeWidth={strokeWidth}
-              />
-              <circle
-                cx={ringSize / 2} cy={ringSize / 2} r={radius}
-                fill="none" stroke="url(#scoreGradient)" strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={circumference - progress}
-                className="transition-all duration-100"
-              />
-              <defs>
-                <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(23, 100%, 50%)" />
-                  <stop offset="100%" stopColor="hsl(18, 100%, 48%)" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-5xl font-black gradient-text">{displayScore}</span>
-              <span className="text-sm text-muted-foreground font-semibold">%</span>
-            </div>
+        {phase === "card" ? (
+          /* ── Athlete Card Phase ── */
+          <div className="relative p-6 flex flex-col items-center animate-fade-in">
+            <AthleteCard
+              score={score}
+              armAlignment={breakdown.armAlignment}
+              hipPosition={breakdown.hipPosition}
+              timingSync={breakdown.timingSync}
+              sport={sport}
+              username="You"
+              onShare={handleShare}
+              onContinue={() => { onClose(); onTryAgain(); }}
+            />
           </div>
-
-          {/* Badge */}
-          <div className={`mt-2 px-5 py-2 rounded-full bg-gradient-to-r ${badgeColorClass} text-sm font-bold flex items-center gap-2 animate-scale-in`}>
-            <badge.icon className="w-4 h-4" />
-            {badge.label}
-          </div>
-
-          {/* Score Breakdown */}
-          {phase !== "counting" && (
-            <div className="w-full mt-6 space-y-3 animate-fade-in">
-              {[
-                { label: "Arm Alignment", value: breakdown.armAlignment },
-                { label: "Hip Position", value: breakdown.hipPosition },
-                { label: "Timing Sync", value: breakdown.timingSync },
-              ].map((item) => (
-                <div key={item.label} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{item.label}</span>
-                    <span className="text-foreground font-semibold">{item.value}%</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className="h-full rounded-full gradient-primary transition-all duration-700"
-                      style={{ width: `${item.value}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* VS Creator Card */}
-          {phase !== "counting" && reel && (
-            <div className="w-full mt-5 p-4 rounded-xl bg-secondary/50 border border-border animate-fade-in">
-              <p className="text-xs text-muted-foreground text-center mb-3 font-semibold uppercase tracking-wider">VS Creator</p>
-              <div className="flex items-center justify-between">
-                {/* Creator side */}
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-16 h-20 relative">
-                    {/* Simple stick figure - orange */}
-                    <svg viewBox="0 0 40 56" className="w-full h-full">
-                      <circle cx="20" cy="8" r="5" fill="none" stroke="hsl(23,100%,50%)" strokeWidth="2" />
-                      <line x1="20" y1="13" x2="20" y2="32" stroke="hsl(23,100%,50%)" strokeWidth="2" />
-                      <line x1="20" y1="18" x2="10" y2="28" stroke="hsl(23,100%,50%)" strokeWidth="2" />
-                      <line x1="20" y1="18" x2="30" y2="26" stroke="hsl(23,100%,50%)" strokeWidth="2" />
-                      <line x1="20" y1="32" x2="12" y2="48" stroke="hsl(23,100%,50%)" strokeWidth="2" />
-                      <line x1="20" y1="32" x2="28" y2="48" stroke="hsl(23,100%,50%)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                  <span className="text-xs font-bold text-primary">
-                    {reel.creator_username}
-                  </span>
-                </div>
-
-                <div className="text-2xl font-black text-muted-foreground">VS</div>
-
-                {/* User side */}
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-16 h-20 relative">
-                    <svg viewBox="0 0 40 56" className="w-full h-full">
-                      <circle cx="20" cy="8" r="5" fill="none" stroke="hsl(0,0%,100%)" strokeWidth="2" />
-                      <line x1="20" y1="13" x2="20" y2="32" stroke="hsl(0,0%,100%)" strokeWidth="2" />
-                      <line x1="20" y1="18" x2="8" y2="30" stroke="hsl(0,0%,100%)" strokeWidth="2" />
-                      <line x1="20" y1="18" x2="32" y2="24" stroke="hsl(0,0%,100%)" strokeWidth="2" />
-                      <line x1="20" y1="32" x2="10" y2="48" stroke="hsl(0,0%,100%)" strokeWidth="2" />
-                      <line x1="20" y1="32" x2="30" y2="48" stroke="hsl(0,0%,100%)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                  <span className="text-xs font-bold text-foreground">You</span>
-                </div>
+        ) : (
+          /* ── Score Reveal Phases ── */
+          <div className="relative p-6 flex flex-col items-center">
+            {/* Score Ring */}
+            <div className="relative my-4" style={{ width: ringSize, height: ringSize }}>
+              <svg className="absolute inset-0 -rotate-90" width={ringSize} height={ringSize}>
+                <circle
+                  cx={ringSize / 2} cy={ringSize / 2} r={radius}
+                  fill="none" stroke="hsl(var(--border))" strokeWidth={strokeWidth}
+                />
+                <circle
+                  cx={ringSize / 2} cy={ringSize / 2} r={radius}
+                  fill="none" stroke="url(#scoreGradient)" strokeWidth={strokeWidth}
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={circumference - progress}
+                  className="transition-all duration-100"
+                />
+                <defs>
+                  <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(23, 100%, 50%)" />
+                    <stop offset="100%" stopColor="hsl(18, 100%, 48%)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-5xl font-black gradient-text">{displayScore}</span>
+                <span className="text-sm text-muted-foreground font-semibold">%</span>
               </div>
             </div>
-          )}
 
-          {/* Coins Animation */}
-          {showCoins && (
-            <div className="mt-4 animate-fade-in">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/15 border border-primary/25">
-                <span className="text-lg">🪙</span>
-                <span className="text-sm font-bold text-primary">+{coins} Caydence Coins</span>
+            {/* Badge */}
+            <div className={`mt-2 px-5 py-2 rounded-full bg-gradient-to-r ${badgeColorClass} text-sm font-bold flex items-center gap-2 animate-scale-in`}>
+              <badge.icon className="w-4 h-4" />
+              {badge.label}
+            </div>
+
+            {/* Score Breakdown */}
+            {phase !== "counting" && (
+              <div className="w-full mt-6 space-y-3 animate-fade-in">
+                {[
+                  { label: "Arm Alignment", value: breakdown.armAlignment },
+                  { label: "Hip Position", value: breakdown.hipPosition },
+                  { label: "Timing Sync", value: breakdown.timingSync },
+                ].map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="text-foreground font-semibold">{item.value}%</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className="h-full rounded-full gradient-primary transition-all duration-700"
+                        style={{ width: `${item.value}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* CTAs */}
-          {phase === "complete" && (
-            <div className="w-full flex gap-3 mt-6 animate-fade-in">
-              <Button
-                onClick={() => { onClose(); onTryAgain(); }}
-                variant="outline"
-                className="flex-1 gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Try Again
-              </Button>
-              <Button
-                onClick={handleShare}
-                className="flex-1 gap-2"
-              >
-                <Share2 className="w-4 h-4" />
-                Share My Score
-              </Button>
-            </div>
-          )}
-        </div>
+            {/* VS Creator Card */}
+            {phase !== "counting" && reel && (
+              <div className="w-full mt-5 p-4 rounded-xl bg-secondary/50 border border-border animate-fade-in">
+                <p className="text-xs text-muted-foreground text-center mb-3 font-semibold uppercase tracking-wider">VS Creator</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 flex flex-col items-center gap-2">
+                    <div className="w-16 h-20 relative">
+                      <svg viewBox="0 0 40 56" className="w-full h-full">
+                        <circle cx="20" cy="8" r="5" fill="none" stroke="hsl(23,100%,50%)" strokeWidth="2" />
+                        <line x1="20" y1="13" x2="20" y2="32" stroke="hsl(23,100%,50%)" strokeWidth="2" />
+                        <line x1="20" y1="18" x2="10" y2="28" stroke="hsl(23,100%,50%)" strokeWidth="2" />
+                        <line x1="20" y1="18" x2="30" y2="26" stroke="hsl(23,100%,50%)" strokeWidth="2" />
+                        <line x1="20" y1="32" x2="12" y2="48" stroke="hsl(23,100%,50%)" strokeWidth="2" />
+                        <line x1="20" y1="32" x2="28" y2="48" stroke="hsl(23,100%,50%)" strokeWidth="2" />
+                      </svg>
+                    </div>
+                    <span className="text-xs font-bold text-primary">{reel.creator_username}</span>
+                  </div>
+                  <div className="text-2xl font-black text-muted-foreground">VS</div>
+                  <div className="flex-1 flex flex-col items-center gap-2">
+                    <div className="w-16 h-20 relative">
+                      <svg viewBox="0 0 40 56" className="w-full h-full">
+                        <circle cx="20" cy="8" r="5" fill="none" stroke="hsl(0,0%,100%)" strokeWidth="2" />
+                        <line x1="20" y1="13" x2="20" y2="32" stroke="hsl(0,0%,100%)" strokeWidth="2" />
+                        <line x1="20" y1="18" x2="8" y2="30" stroke="hsl(0,0%,100%)" strokeWidth="2" />
+                        <line x1="20" y1="18" x2="32" y2="24" stroke="hsl(0,0%,100%)" strokeWidth="2" />
+                        <line x1="20" y1="32" x2="10" y2="48" stroke="hsl(0,0%,100%)" strokeWidth="2" />
+                        <line x1="20" y1="32" x2="30" y2="48" stroke="hsl(0,0%,100%)" strokeWidth="2" />
+                      </svg>
+                    </div>
+                    <span className="text-xs font-bold text-foreground">You</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Coins Animation */}
+            {showCoins && (
+              <div className="mt-4 animate-fade-in">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/15 border border-primary/25">
+                  <span className="text-lg">🪙</span>
+                  <span className="text-sm font-bold text-primary">+{coins} Caydence Coins</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
