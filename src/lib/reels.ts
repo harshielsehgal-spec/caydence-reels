@@ -13,6 +13,7 @@ export interface Reel {
   likes_count: number;
   comments_count: number;
   created_at: string;
+  sport: string;
 }
 
 export interface ReelAttempt {

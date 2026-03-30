@@ -122,6 +122,7 @@ export type Database = {
           hashtags: string | null
           id: string
           likes_count: number
+          sport: string
           title: string
           video_url: string
         }
@@ -136,6 +137,7 @@ export type Database = {
           hashtags?: string | null
           id?: string
           likes_count?: number
+          sport?: string
           title: string
           video_url: string
         }
@@ -150,6 +152,7 @@ export type Database = {
           hashtags?: string | null
           id?: string
           likes_count?: number
+          sport?: string
           title?: string
           video_url?: string
         }

@@ -6,6 +6,7 @@ import LeaderboardModal from "./modals/LeaderboardModal";
 import AnalyzeTipsModal from "./modals/AnalyzeTipsModal";
 import AttemptGateModal from "./modals/AttemptGateModal";
 import AdModal from "./modals/AdModal";
+import CardCollectionModal, { CollectedCard } from "./modals/CardCollectionModal";
 import { Reel, fetchReels } from "@/lib/reels";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -13,6 +14,14 @@ import { toast } from "@/hooks/use-toast";
 interface ReelsExperienceProps {
   athleteId?: string;
 }
+
+const getTierFromScore = (score: number): string => {
+  if (score >= 95) return "legend";
+  if (score >= 85) return "elite";
+  if (score >= 75) return "athlete";
+  if (score >= 60) return "contender";
+  return "rookie";
+};
 
 const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [reels, setReels] = useState<Reel[]>([]);
@@ -32,6 +41,12 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   const [gatedReelId, setGatedReelId] = useState<string | null>(null);
   const [lastScore, setLastScore] = useState(0);
   const [lastCoins, setLastCoins] = useState(0);
+  const [lastSport, setLastSport] = useState("general");
+  const [lastBreakdown, setLastBreakdown] = useState({ arm: 0, hip: 0, sync: 0 });
+
+  // Card collection state
+  const [cardCollection, setCardCollection] = useState<Record<string, CollectedCard>>({});
+  const [isCollectionOpen, setIsCollectionOpen] = useState(false);
 
   useEffect(() => { loadReels(); }, []);
 
@@ -66,8 +81,20 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
 
   const handleScoreResult = (reelId: string, score: number) => {
     const coins = Math.floor(score / 10) + 10;
+    const sport = selectedReel?.sport || "general";
+
+    // Generate breakdown
+    const variance = () => Math.floor(Math.random() * 10) - 5;
+    const breakdown = {
+      arm: Math.min(100, Math.max(50, score + variance())),
+      hip: Math.min(100, Math.max(50, score + variance())),
+      sync: Math.min(100, Math.max(50, score + variance())),
+    };
+
     setLastScore(score);
     setLastCoins(coins);
+    setLastSport(sport);
+    setLastBreakdown(breakdown);
 
     setUserScores(prev => ({ ...prev, [reelId]: score }));
     setAttemptCounts(prev => ({ ...prev, [reelId]: (prev[reelId] ?? 0) + 1 }));
@@ -80,7 +107,24 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
       [reelId]: [...(prev[reelId] || []), { score }],
     }));
 
-    // Close upload, open cinematic reveal
+    // Update card collection — only if new score is higher for this sport
+    setCardCollection(prev => {
+      const existing = prev[sport];
+      if (!existing || score > existing.score) {
+        return {
+          ...prev,
+          [sport]: {
+            score,
+            tier: getTierFromScore(score),
+            breakdown,
+            sport,
+            earnedAt: new Date().toISOString(),
+          },
+        };
+      }
+      return prev;
+    });
+
     setIsUploadModalOpen(false);
     setTimeout(() => setIsScoreRevealOpen(true), 300);
   };
@@ -140,6 +184,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         userScores={userScores}
         joinedChallenges={joinedChallenges}
         attemptHistories={attemptHistories}
+        onOpenCollection={() => setIsCollectionOpen(true)}
       />
 
       <UploadAttemptModal
@@ -156,7 +201,7 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         reel={selectedReel}
         score={lastScore}
         coins={lastCoins}
-        sport="cricket"
+        sport={lastSport}
         onTryAgain={handleTryAgainFromReveal}
       />
 
@@ -185,6 +230,12 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
       />
 
       <AdModal isOpen={isAdModalOpen} onComplete={handleAdComplete} />
+
+      <CardCollectionModal
+        isOpen={isCollectionOpen}
+        onClose={() => setIsCollectionOpen(false)}
+        collection={cardCollection}
+      />
     </div>
   );
 };
