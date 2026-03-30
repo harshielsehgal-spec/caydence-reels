@@ -12,9 +12,10 @@ interface ReelsFeedProps {
   userScores?: Record<string, number>;
   joinedChallenges?: Record<string, boolean>;
   attemptHistories?: Record<string, { score: number }[]>;
+  onOpenCollection?: () => void;
 }
 
-const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {} }: ReelsFeedProps) => {
+const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {}, onOpenCollection }: ReelsFeedProps) => {
   const [visibleReelId, setVisibleReelId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const containerRef = useRef<HTMLDivElement>(null);
