@@ -73,6 +73,7 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport = "gym", 
         setTimeout(() => {
           setPhase("complete");
           setShowCoins(true);
+          setTimeout(() => setPhase("card"), 1800);
         }, 800);
       }
     };
