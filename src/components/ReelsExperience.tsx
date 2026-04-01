@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 
 interface ReelsExperienceProps {
   athleteId?: string;
+  preferredSports?: string[];
 }
 
 const getTierFromScore = (score: number): string => {
