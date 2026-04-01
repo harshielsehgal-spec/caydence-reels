@@ -72,18 +72,25 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
 
   const loadReels = async () => {
     setIsLoading(true);
-    const data = await fetchReels();
-    // Sort preferred sports first
-    if (preferredSports.length > 0) {
-      const prefSet = new Set(preferredSports);
-      data.sort((a, b) => {
-        const aMatch = prefSet.has(a.sport) || prefSet.has(a.sport.replace(/_.*/, "")) ? 0 : 1;
-        const bMatch = prefSet.has(b.sport) || prefSet.has(b.sport.replace(/_.*/, "")) ? 0 : 1;
-        return aMatch - bMatch;
-      });
+    setFetchError(null);
+    try {
+      const data = await fetchReels();
+      // Sort preferred sports first
+      if (preferredSports.length > 0) {
+        const prefSet = new Set(preferredSports);
+        data.sort((a, b) => {
+          const aMatch = prefSet.has(a.sport) || prefSet.has(a.sport.replace(/_.*/, "")) ? 0 : 1;
+          const bMatch = prefSet.has(b.sport) || prefSet.has(b.sport.replace(/_.*/, "")) ? 0 : 1;
+          return aMatch - bMatch;
+        });
+      }
+      setReels(data);
+    } catch (err) {
+      console.error("Failed to load reels:", err);
+      setFetchError("Failed to load reels");
+    } finally {
+      setIsLoading(false);
     }
-    setReels(data);
-    setIsLoading(false);
   };
 
   const handleAnalyze = (reel: Reel) => {
