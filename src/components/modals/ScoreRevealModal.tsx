@@ -45,6 +45,8 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
   const [breakdown, setBreakdown] = useState<ScoreBreakdown>({ armAlignment: 0, hipPosition: 0, timingSync: 0 });
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCoins, setShowCoins] = useState(false);
+  const [impactLanded, setImpactLanded] = useState(false);
+  const [scoreFlash, setScoreFlash] = useState(false);
   const frameRef = useRef<number>();
 
   useEffect(() => {
