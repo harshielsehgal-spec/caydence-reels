@@ -188,42 +188,44 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
 
             {/* Score Breakdown */}
             {phase !== "counting" && (
-              <div className="w-full mt-6 space-y-3 animate-fade-in">
-                {[
-                  { label: "Arm Alignment", value: breakdown.armAlignment },
-                  { label: "Hip Position", value: breakdown.hipPosition },
-                  { label: "Timing Sync", value: breakdown.timingSync },
-                ].map((item) => (
-                  <div key={item.label} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{item.label}</span>
-                      <span className="text-foreground font-semibold">{item.value}%</span>
+              <>
+                <div className="w-full mt-6 space-y-3 animate-fade-in">
+                  {[
+                    { label: "Arm Alignment", value: breakdown.armAlignment },
+                    { label: "Hip Position", value: breakdown.hipPosition },
+                    { label: "Timing Sync", value: breakdown.timingSync },
+                  ].map((item) => (
+                    <div key={item.label} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="text-foreground font-semibold">{item.value}%</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full gradient-primary transition-all duration-700"
+                          style={{ width: `${item.value}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className="h-full rounded-full gradient-primary transition-all duration-700"
-                        style={{ width: `${item.value}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* AI Coach Feedback */}
-              <div className="w-full mt-4 p-3 rounded-xl bg-primary/5 border border-primary/15">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Zap className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-primary">AI Coach</span>
+                  ))}
                 </div>
-                {coachingFeedback ? (
-                  <p className="text-xs text-muted-foreground leading-relaxed">{coachingFeedback}</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-3 w-3/4" />
+
+                {/* AI Coach Feedback */}
+                <div className="w-full mt-4 p-3 rounded-xl bg-primary/5 border border-primary/15 animate-fade-in">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Zap className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-primary">AI Coach</span>
                   </div>
-                )}
-              </div>
+                  {coachingFeedback ? (
+                    <p className="text-xs text-muted-foreground leading-relaxed">{coachingFeedback}</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-3/4" />
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {/* VS Creator Card */}
