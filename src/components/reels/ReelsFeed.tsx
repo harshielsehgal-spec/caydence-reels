@@ -18,7 +18,7 @@ interface ReelsFeedProps {
   unreadNotifCount?: number;
 }
 
-const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {}, onOpenCollection }: ReelsFeedProps) => {
+const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {}, onOpenCollection, onOpenNotifications, unreadNotifCount = 0 }: ReelsFeedProps) => {
   const [visibleReelId, setVisibleReelId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const containerRef = useRef<HTMLDivElement>(null);
