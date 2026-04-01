@@ -14,6 +14,8 @@ interface ReelsFeedProps {
   joinedChallenges?: Record<string, boolean>;
   attemptHistories?: Record<string, { score: number }[]>;
   onOpenCollection?: () => void;
+  onOpenNotifications?: () => void;
+  unreadNotifCount?: number;
 }
 
 const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {}, onOpenCollection }: ReelsFeedProps) => {
