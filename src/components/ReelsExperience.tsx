@@ -7,6 +7,7 @@ import AnalyzeTipsModal from "./modals/AnalyzeTipsModal";
 import AttemptGateModal from "./modals/AttemptGateModal";
 import AdModal from "./modals/AdModal";
 import CardCollectionModal, { CollectedCard } from "./modals/CardCollectionModal";
+import NotificationsModal from "./modals/NotificationsModal";
 import { Reel, fetchReels } from "@/lib/reels";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
