@@ -256,6 +256,13 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         onClose={() => setIsCollectionOpen(false)}
         collection={cardCollection}
       />
+
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        athleteId={resolvedAthleteId}
+        onUnreadCountChange={setUnreadNotifCount}
+      />
     </div>
   );
 };
