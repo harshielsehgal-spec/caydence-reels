@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Share2, RotateCcw, Flame, Dumbbell, Zap } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Reel } from "@/lib/reels";
 import AthleteCard from "@/components/reels/AthleteCard";
 
