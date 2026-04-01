@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReelCard from "./ReelCard";
 import SportsCategoryFilter from "./SportsCategoryFilter";
+import { Bell } from "lucide-react";
 import { Reel } from "@/lib/reels";
 
 interface ReelsFeedProps {
@@ -13,9 +14,11 @@ interface ReelsFeedProps {
   joinedChallenges?: Record<string, boolean>;
   attemptHistories?: Record<string, { score: number }[]>;
   onOpenCollection?: () => void;
+  onOpenNotifications?: () => void;
+  unreadNotifCount?: number;
 }
 
-const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {}, onOpenCollection }: ReelsFeedProps) => {
+const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, userScores = {}, joinedChallenges = {}, attemptHistories = {}, onOpenCollection, onOpenNotifications, unreadNotifCount = 0 }: ReelsFeedProps) => {
   const [visibleReelId, setVisibleReelId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +63,19 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
           <div className="flex-1 overflow-hidden">
             <SportsCategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
           </div>
+          {onOpenNotifications && (
+            <button
+              onClick={onOpenNotifications}
+              className="relative flex-shrink-0 w-9 h-9 rounded-full bg-background/40 backdrop-blur-sm border border-border/40 flex items-center justify-center hover:bg-primary/20 transition-all"
+            >
+              <Bell className="w-5 h-5 text-primary" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                  {unreadNotifCount > 99 ? "99+" : unreadNotifCount}
+                </span>
+              )}
+            </button>
+          )}
           {onOpenCollection && (
             <button
               onClick={onOpenCollection}

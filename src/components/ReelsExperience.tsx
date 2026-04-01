@@ -7,6 +7,7 @@ import AnalyzeTipsModal from "./modals/AnalyzeTipsModal";
 import AttemptGateModal from "./modals/AttemptGateModal";
 import AdModal from "./modals/AdModal";
 import CardCollectionModal, { CollectedCard } from "./modals/CardCollectionModal";
+import NotificationsModal from "./modals/NotificationsModal";
 import { Reel, fetchReels } from "@/lib/reels";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -47,7 +48,24 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
   // Card collection state
   const [cardCollection, setCardCollection] = useState<Record<string, CollectedCard>>({});
   const [isCollectionOpen, setIsCollectionOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
+  const resolvedAthleteId = athleteId || localStorage.getItem("caydence_athlete_id") || "";
+
+  // Fetch unread notification count
+  useEffect(() => {
+    if (!resolvedAthleteId) return;
+    const fetchUnread = async () => {
+      const { count, error } = await (await import("@/integrations/supabase/client")).supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("athlete_id", resolvedAthleteId)
+        .eq("read", false);
+      if (!error && count !== null) setUnreadNotifCount(count);
+    };
+    fetchUnread();
+  }, [resolvedAthleteId, isNotificationsOpen]);
   useEffect(() => { loadReels(); }, []);
 
   const loadReels = async () => {
@@ -185,6 +203,8 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         joinedChallenges={joinedChallenges}
         attemptHistories={attemptHistories}
         onOpenCollection={() => setIsCollectionOpen(true)}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        unreadNotifCount={unreadNotifCount}
       />
 
       <UploadAttemptModal
@@ -235,6 +255,13 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         isOpen={isCollectionOpen}
         onClose={() => setIsCollectionOpen(false)}
         collection={cardCollection}
+      />
+
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        athleteId={resolvedAthleteId}
+        onUnreadCountChange={setUnreadNotifCount}
       />
     </div>
   );
