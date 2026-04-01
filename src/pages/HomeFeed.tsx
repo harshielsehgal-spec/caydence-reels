@@ -87,7 +87,7 @@ const HomeFeed = () => {
       
       <StoriesRow onStoryClick={handleStoryClick} />
       
-      <div className="divide-y divide-border/20">
+      <div className="divide-y divide-border/20 max-w-2xl mx-auto">
         {getPersonalizedFeed().map((reel) => (
           <FeedCard
             key={reel.id}
