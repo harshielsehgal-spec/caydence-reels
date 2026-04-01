@@ -113,7 +113,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
   return (
     <div className="h-screen w-full flex-shrink-0 snap-start snap-always flex items-center justify-center bg-background">
-      <div className="relative w-full max-w-[420px] h-full mx-auto">
+      <div className="relative w-full max-w-[480px] h-full mx-auto lg:max-h-[calc(100vh-2rem)] lg:my-4 lg:rounded-2xl lg:overflow-hidden">
         {/* Video */}
         <div className="absolute inset-0 overflow-hidden rounded-xl md:rounded-2xl">
           <video ref={videoRef} src={reel.video_url} className="w-full h-full object-contain bg-black" muted loop playsInline />
