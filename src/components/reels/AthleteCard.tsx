@@ -187,16 +187,25 @@ const AthleteCard = ({
             )}
 
             {/* Content */}
-            <div className="relative z-20 flex flex-col items-center h-full px-4 py-5">
-              {/* Header */}
-              <p className="text-[9px] font-bold tracking-[0.25em] text-muted-foreground mb-0.5"
-                 style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                CAYDENCE
-              </p>
-              <p className="text-[10px] font-semibold flex items-center gap-1"
-                 style={{ color: `hsl(${accentHsl})` }}>
-                {getSportEmoji(sport)} {sport.toUpperCase()}
-              </p>
+            <div className="relative z-20 flex flex-col items-center h-full px-4 py-4">
+              {/* Top row: logo left, sport tag right */}
+              <div className="w-full flex items-center justify-between mb-1">
+                <p className="text-[9px] font-black tracking-[0.2em] text-foreground flex items-center"
+                   style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  CAYDENCE
+                  <span className="inline-block w-1 h-1 rounded-full bg-primary ml-0.5" />
+                </p>
+                <span
+                  className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                  style={{
+                    backgroundColor: `hsl(${accentHsl} / 0.15)`,
+                    color: `hsl(${accentHsl})`,
+                    border: `1px solid hsl(${accentHsl} / 0.3)`,
+                  }}
+                >
+                  {getSportEmoji(sport)} {sport.replace(/_/g, " ").toUpperCase()}
+                </span>
+              </div>
 
               {/* Score */}
               <div className="flex-1 flex items-center justify-center">
