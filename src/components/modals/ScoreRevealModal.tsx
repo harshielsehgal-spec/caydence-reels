@@ -18,6 +18,7 @@ interface ScoreRevealModalProps {
   score: number;
   coins: number;
   sport?: string;
+  coachingFeedback?: string;
   onTryAgain: () => void;
 }
 
