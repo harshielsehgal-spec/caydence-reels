@@ -197,7 +197,12 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-5xl font-black gradient-text">{displayScore}</span>
+                <span
+                  className="text-5xl font-black gradient-text"
+                  style={scoreFlash ? { animation: 'score-flash 0.4s ease-out forwards' } : undefined}
+                >
+                  {displayScore}
+                </span>
                 <span className="text-sm text-muted-foreground font-semibold">%</span>
               </div>
             </div>
