@@ -1,4 +1,4 @@
-import { Home, Search, PlusCircle, Film, MessageCircle } from "lucide-react";
+import { Home, Search, PlusCircle, Film, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,7 @@ const navItems = [
   { icon: Search, label: "Search", path: "/search" },
   { icon: PlusCircle, label: "Try", path: "/try" },
   { icon: Film, label: "Reels", path: "/" },
-  { icon: MessageCircle, label: "Messages", path: "/messages" },
+  { icon: User, label: "Profile", path: "/profile" },
 ];
 
 const BottomNav = () => {
