@@ -25,7 +25,7 @@ const getTierFromScore = (score: number): string => {
   return "rookie";
 };
 
-const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
+const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperienceProps) => {
   const [reels, setReels] = useState<Reel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
