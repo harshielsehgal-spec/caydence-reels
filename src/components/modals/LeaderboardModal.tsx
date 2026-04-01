@@ -44,6 +44,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
   const loadLeaderboard = async () => {
     if (!reel) return;
     setIsLoading(true);
+    setFetchError(null);
 
     // Query reel_attempts grouped by athlete_id
     const { data, error } = await supabase
@@ -51,7 +52,15 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
       .select("athlete_id, ai_match_score")
       .eq("reel_id", reel.id);
 
-    if (error || !data) {
+    if (error) {
+      console.error("Failed to load leaderboard:", error);
+      setFetchError("Failed to load leaderboard");
+      setLeaderboard([]);
+      setTotalPlayers(0);
+      setIsLoading(false);
+      return;
+    }
+    if (!data) {
       setLeaderboard([]);
       setTotalPlayers(0);
       setIsLoading(false);
