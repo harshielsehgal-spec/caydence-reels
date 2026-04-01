@@ -231,7 +231,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
               </Button>
               <button
                 onClick={(e) => { e.stopPropagation(); onAnalyze(reel); }}
-                className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center glow-orange hover:scale-105 transition-transform"
+                className="w-12 h-12 min-w-[44px] min-h-[44px] rounded-full gradient-primary flex items-center justify-center glow-orange hover:scale-105 transition-transform active:scale-95"
               >
                 <Camera className="w-5 h-5 text-primary-foreground" />
               </button>
