@@ -55,6 +55,8 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
       setPhase("counting");
       setShowConfetti(false);
       setShowCoins(false);
+      setImpactLanded(false);
+      setScoreFlash(false);
       return;
     }
 
