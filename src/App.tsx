@@ -8,6 +8,7 @@ import HomeFeed from "./pages/HomeFeed";
 import SearchPage from "./pages/SearchPage";
 import MessagesPage from "./pages/MessagesPage";
 import TryPage from "./pages/TryPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
