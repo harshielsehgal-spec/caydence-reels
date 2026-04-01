@@ -2,7 +2,16 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Trophy, Medal, User, TrendingUp, Check, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Reel, fetchLeaderboard, LeaderboardEntry } from "@/lib/reels";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Reel } from "@/lib/reels";
+import { supabase } from "@/integrations/supabase/client";
+
+interface LeaderboardEntry {
+  athlete_id: string;
+  best_score: number;
+  attempts_count: number;
+  rank: number;
+}
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -14,24 +23,6 @@ interface LeaderboardModalProps {
   userBestScore?: number;
 }
 
-const DEMO_PLAYERS_JOINED = 124;
-
-const fallbackLeaderboard: LeaderboardEntry[] = [
-  { athlete_id: "demo-1", best_score: 95, attempts_count: 7, rank: 1 },
-  { athlete_id: "demo-2", best_score: 92, attempts_count: 5, rank: 2 },
-  { athlete_id: "demo-3", best_score: 90, attempts_count: 8, rank: 3 },
-  { athlete_id: "demo-4", best_score: 88, attempts_count: 4, rank: 4 },
-  { athlete_id: "demo-5", best_score: 85, attempts_count: 6, rank: 5 },
-];
-
-const fallbackNames: Record<string, string> = {
-  "demo-1": "Aarya Singh",
-  "demo-2": "Kabir Mehra",
-  "demo-3": "Rohan Verma",
-  "demo-4": "Meera Nair",
-  "demo-5": "Priya Sharma",
-};
-
 const podiumGradients: Record<number, string> = {
   1: "from-yellow-500/20 to-yellow-600/5 border-yellow-500/40",
   2: "from-gray-300/15 to-gray-400/5 border-gray-300/30",
@@ -41,6 +32,9 @@ const podiumGradients: Record<number, string> = {
 const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, onJoinChallenge, userBestScore }: LeaderboardModalProps) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [totalPlayers, setTotalPlayers] = useState(0);
+
+  const currentAthleteId = athleteId || localStorage.getItem("caydence_athlete_id") || "";
 
   useEffect(() => {
     if (isOpen && reel) loadLeaderboard();
@@ -49,8 +43,40 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
   const loadLeaderboard = async () => {
     if (!reel) return;
     setIsLoading(true);
-    const data = await fetchLeaderboard(reel.id);
-    setLeaderboard(data.length === 0 ? fallbackLeaderboard : data);
+
+    // Query reel_attempts grouped by athlete_id
+    const { data, error } = await supabase
+      .from("reel_attempts")
+      .select("athlete_id, ai_match_score")
+      .eq("reel_id", reel.id);
+
+    if (error || !data) {
+      setLeaderboard([]);
+      setTotalPlayers(0);
+      setIsLoading(false);
+      return;
+    }
+
+    // Group by athlete_id, compute best score and attempt count
+    const grouped: Record<string, { scores: number[] }> = {};
+    for (const row of data) {
+      if (!grouped[row.athlete_id]) grouped[row.athlete_id] = { scores: [] };
+      grouped[row.athlete_id].scores.push(row.ai_match_score);
+    }
+
+    const entries = Object.entries(grouped)
+      .map(([aid, { scores }]) => ({
+        athlete_id: aid,
+        best_score: Math.max(...scores),
+        attempts_count: scores.length,
+        rank: 0,
+      }))
+      .sort((a, b) => b.best_score - a.best_score)
+      .slice(0, 10)
+      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
+
+    setLeaderboard(entries);
+    setTotalPlayers(Object.keys(grouped).length);
     setIsLoading(false);
   };
 
@@ -64,6 +90,9 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
   const handleJoin = () => {
     if (reel && onJoinChallenge) onJoinChallenge(reel.id);
   };
+
+  // Find current user's rank
+  const userEntry = leaderboard.find(e => e.athlete_id === currentAthleteId);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -84,7 +113,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
           <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-secondary/50 border border-border">
             <User className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
-              <span className="text-primary font-bold">{DEMO_PLAYERS_JOINED}</span> joined
+              <span className="text-primary font-bold">{totalPlayers || "—"}</span> joined
             </span>
           </div>
           <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-primary/10 border border-primary/20">
@@ -94,7 +123,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
         </div>
 
         {/* Your Rank Card */}
-        {userBestScore && userBestScore > 0 && (
+        {(userEntry || (userBestScore && userBestScore > 0)) && (
           <div className="mx-6 my-3 bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/20 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -103,10 +132,14 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">Your Best</p>
-                  <p className="text-xs text-muted-foreground">Rank #47 · Beat your best to climb</p>
+                  <p className="text-xs text-muted-foreground">
+                    {userEntry ? `Rank #${userEntry.rank} · ${userEntry.attempts_count} attempts` : "Beat your best to climb"}
+                  </p>
                 </div>
               </div>
-              <p className="text-2xl font-black text-primary">{userBestScore}%</p>
+              <p className="text-2xl font-black text-primary">
+                {userEntry ? userEntry.best_score : userBestScore}%
+              </p>
             </div>
           </div>
         )}
@@ -134,13 +167,34 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
           </h3>
           <div className="space-y-2">
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              /* Loading skeletons */
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-secondary/30">
+                  <Skeleton className="w-7 h-7 rounded-full" />
+                  <Skeleton className="w-9 h-9 rounded-full" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-24" />
+                    <Skeleton className="h-2.5 w-16" />
+                  </div>
+                  <Skeleton className="h-6 w-12" />
+                </div>
+              ))
+            ) : leaderboard.length === 0 ? (
+              /* Empty state */
+              <div className="flex flex-col items-center py-10">
+                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-3">
+                  <Trophy className="w-7 h-7 text-muted-foreground" />
+                </div>
+                <p className="text-foreground font-semibold text-sm">No attempts yet</p>
+                <p className="text-muted-foreground text-xs mt-1 text-center">
+                  Be the first to attempt this challenge!
+                </p>
               </div>
             ) : (
-              leaderboard.slice(0, 5).map((entry) => {
-                const rank = Number(entry.rank);
+              leaderboard.map((entry) => {
+                const rank = entry.rank;
                 const isPodium = rank <= 3;
+                const isCurrentUser = entry.athlete_id === currentAthleteId;
                 const gradientClass = isPodium
                   ? podiumGradients[rank]
                   : "bg-secondary/50 border-border";
@@ -150,7 +204,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
                     key={entry.athlete_id}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${gradientClass} ${
                       rank === 1 ? "animate-pulse" : ""
-                    } ${athleteId === entry.athlete_id ? "ring-1 ring-primary/50" : ""}`}
+                    } ${isCurrentUser ? "ring-2 ring-primary/60" : ""}`}
                     style={rank === 1 ? { boxShadow: "0 0 20px hsl(23,100%,50%,0.15)" } : undefined}
                   >
                     <div className="w-7 flex items-center justify-center">{getRankIcon(rank)}</div>
@@ -158,16 +212,18 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
                       <User className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground text-sm truncate">
-                        {athleteId === entry.athlete_id
-                          ? "You"
-                          : fallbackNames[entry.athlete_id] || `Athlete ${entry.athlete_id.slice(0, 6)}`}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground text-sm truncate">
+                          {isCurrentUser ? "You" : entry.athlete_id.slice(0, 8)}
+                        </p>
+                        {isCurrentUser && (
+                          <span className="text-[10px] font-bold uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded">You</span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">{entry.attempts_count} attempts</p>
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-foreground">{entry.best_score}%</div>
-                      {/* Mini bar */}
                       <div className="w-16 h-1.5 rounded-full bg-secondary mt-1 overflow-hidden">
                         <div
                           className="h-full rounded-full gradient-primary transition-all duration-500"
