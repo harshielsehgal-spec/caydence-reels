@@ -1,131 +1,101 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowLeft, Search as SearchIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/navigation/BottomNav";
 
 const sportChips = [
   { id: "cricket", label: "Cricket", emoji: "🏏" },
   { id: "football", label: "Football", emoji: "⚽" },
-  { id: "fitness", label: "Fitness", emoji: "💪" },
+  { id: "gym", label: "Gym", emoji: "💪" },
   { id: "badminton", label: "Badminton", emoji: "🏸" },
-  { id: "gym", label: "Gym", emoji: "🏋️" },
-  { id: "mobility", label: "Mobility", emoji: "🧘" },
+  { id: "basketball", label: "Basketball", emoji: "🏀" },
+  { id: "yoga", label: "Yoga", emoji: "🧘" },
 ];
 
-const tabs = ["Users", "Challenges", "Sports", "Reels"];
-
-const demoResults = {
-  Users: [
-    { id: "1", name: "Rohit Sharma", avatar: "RS", subtitle: "Cricket Coach" },
-    { id: "2", name: "Virat Kohli", avatar: "VK", subtitle: "Fitness Expert" },
-    { id: "3", name: "MS Dhoni", avatar: "MD", subtitle: "Cricket Legend" },
-  ],
-  Challenges: [
-    { id: "1", title: "Cover Drive Master", participants: 234, sport: "Cricket" },
-    { id: "2", title: "Free Kick Pro", participants: 156, sport: "Football" },
-    { id: "3", title: "30-Day Fitness", participants: 892, sport: "Fitness" },
-  ],
-  Sports: sportChips,
-  Reels: [
-    { id: "1", title: "Perfect Bowling Action", views: "12.5K" },
-    { id: "2", title: "Goal Scoring Tips", views: "8.2K" },
-    { id: "3", title: "Morning Stretch Routine", views: "5.1K" },
-  ],
-};
+interface ReelResult {
+  id: string;
+  title: string;
+  creator_username: string;
+  sport: string;
+  hashtags: string | null;
+  likes_count: number;
+}
 
 const SearchPage = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Users");
-  const [selectedSports, setSelectedSports] = useState<string[]>([]);
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [results, setResults] = useState<ReelResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleChipClick = (sportId: string) => {
-    setSelectedSports((prev) =>
-      prev.includes(sportId)
-        ? prev.filter((s) => s !== sportId)
-        : [...prev, sportId]
-    );
+  const searchReels = useCallback(async (searchQuery: string, sport: string | null) => {
+    setIsLoading(true);
+    setHasSearched(true);
+
+    let q = supabase
+      .from("reels")
+      .select("id, title, creator_username, sport, hashtags, likes_count")
+      .order("likes_count", { ascending: false })
+      .limit(20);
+
+    if (searchQuery.trim()) {
+      const term = `%${searchQuery.trim()}%`;
+      q = q.or(`title.ilike.${term},creator_username.ilike.${term},sport.ilike.${term},hashtags.ilike.${term}`);
+    }
+
+    if (sport) {
+      q = q.ilike("sport", `%${sport}%`);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      console.error("Search failed:", error);
+      setResults([]);
+    } else {
+      setResults(data || []);
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Debounced text search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!query.trim() && !selectedSport) {
+      setHasSearched(false);
+      setResults([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => {
+      searchReels(query, selectedSport);
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, selectedSport, searchReels]);
+
+  const handleSportClick = (sportId: string) => {
+    setSelectedSport((prev) => (prev === sportId ? null : sportId));
   };
 
-  const renderResults = () => {
-    switch (activeTab) {
-      case "Users":
-        return (
-          <div className="space-y-3">
-            {demoResults.Users.map((user) => (
-              <button
-                key={user.id}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-card/50 hover:bg-card transition-colors"
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center">
-                  <span className="text-sm font-bold text-white">{user.avatar}</span>
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-foreground">{user.name}</p>
-                  <p className="text-sm text-muted-foreground">{user.subtitle}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        );
-      case "Challenges":
-        return (
-          <div className="space-y-3">
-            {demoResults.Challenges.map((challenge) => (
-              <button
-                key={challenge.id}
-                className="w-full p-4 rounded-xl bg-card/50 hover:bg-card transition-colors text-left"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary">
-                    {challenge.sport}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {challenge.participants} joined
-                  </span>
-                </div>
-                <p className="font-semibold text-foreground">{challenge.title}</p>
-              </button>
-            ))}
-          </div>
-        );
-      case "Sports":
-        return (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {demoResults.Sports.map((sport) => (
-              <button
-                key={sport.id}
-                onClick={() => handleChipClick(sport.id)}
-                className={`p-4 rounded-xl transition-all ${
-                  selectedSports.includes(sport.id)
-                    ? "bg-primary/20 ring-2 ring-primary"
-                    : "bg-card/50 hover:bg-card"
-                }`}
-              >
-                <span className="text-3xl mb-2 block">{sport.emoji}</span>
-                <p className="font-medium text-foreground">{sport.label}</p>
-              </button>
-            ))}
-          </div>
-        );
-      case "Reels":
-        return (
-          <div className="space-y-3">
-            {demoResults.Reels.map((reel) => (
-              <button
-                key={reel.id}
-                onClick={() => navigate("/")}
-                className="w-full flex items-center justify-between p-4 rounded-xl bg-card/50 hover:bg-card transition-colors"
-              >
-                <p className="font-medium text-foreground">{reel.title}</p>
-                <span className="text-sm text-muted-foreground">{reel.views} views</span>
-              </button>
-            ))}
-          </div>
-        );
-      default:
-        return null;
-    }
+  const handleReelClick = (reelId: string) => {
+    navigate("/", { state: { selectedReelId: reelId } });
+  };
+
+  const sportEmojiMap: Record<string, string> = {
+    cricket: "🏏",
+    football: "⚽",
+    gym: "💪",
+    gym_pushup: "💪",
+    badminton: "🏸",
+    basketball: "🏀",
+    yoga: "🧘",
   };
 
   return (
@@ -133,7 +103,7 @@ const SearchPage = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg p-4 space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 text-foreground">
+          <button onClick={() => navigate(-1)} className="p-2 text-foreground min-w-[44px] min-h-[44px] flex items-center justify-center">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 relative">
@@ -142,50 +112,106 @@ const SearchPage = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search..."
-              className="w-full bg-card/50 border border-border/30 rounded-xl py-3 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Search reels, sports, athletes"
+              className="w-full bg-secondary/50 border border-border/30 rounded-xl py-3 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
             />
           </div>
         </div>
 
-        {/* Interest Chips */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+        {/* Trending sport pills */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {sportChips.map((sport) => (
             <button
               key={sport.id}
-              onClick={() => handleChipClick(sport.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap transition-all ${
-                selectedSports.includes(sport.id)
-                  ? "bg-primary text-white"
-                  : "bg-card/50 text-foreground hover:bg-card"
+              onClick={() => handleSportClick(sport.id)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full whitespace-nowrap transition-all min-h-[44px] text-sm font-medium ${
+                selectedSport === sport.id
+                  ? "gradient-primary text-primary-foreground"
+                  : "bg-secondary/50 text-foreground hover:bg-secondary border border-border/30"
               }`}
             >
               <span>{sport.emoji}</span>
-              <span className="text-sm font-medium">{sport.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 bg-card/30 rounded-xl p-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab
-                  ? "bg-primary text-white"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab}
+              <span>{sport.label}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Results */}
-      <div className="p-4 max-w-2xl mx-auto">{renderResults()}</div>
+      {/* Content */}
+      <div className="p-4 max-w-2xl mx-auto">
+        {/* Default state — no search yet */}
+        {!hasSearched && !isLoading && (
+          <div className="flex flex-col items-center pt-16">
+            <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4">
+              <SearchIcon className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-semibold text-base mb-1">Discover Reels</p>
+            <p className="text-muted-foreground text-sm text-center">
+              Search by name, sport, or hashtag — or tap a category above
+            </p>
+          </div>
+        )}
+
+        {/* Loading skeletons */}
+        {isLoading && (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/30 border border-border/30">
+                <div className="w-11 h-11 rounded-lg bg-secondary animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-40 bg-secondary rounded animate-pulse" />
+                  <div className="h-2.5 w-24 bg-secondary rounded animate-pulse" />
+                </div>
+                <div className="h-6 w-16 bg-secondary rounded-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Results */}
+        {hasSearched && !isLoading && results.length > 0 && (
+          <div className="space-y-2">
+            {results.map((reel) => (
+              <button
+                key={reel.id}
+                onClick={() => handleReelClick(reel.id)}
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl bg-secondary/30 border border-border/30 hover:bg-secondary/50 transition-colors text-left min-h-[44px]"
+              >
+                {/* Sport icon */}
+                <div className="w-11 h-11 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-lg flex-shrink-0">
+                  {sportEmojiMap[reel.sport] || "🎯"}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{reel.title}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{reel.creator_username}</p>
+                </div>
+
+                {/* Sport pill */}
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-full flex-shrink-0">
+                  {reel.sport.replace(/_/g, " ")}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {hasSearched && !isLoading && results.length === 0 && (
+          <div className="flex flex-col items-center pt-16">
+            <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center mb-4">
+              <SearchIcon className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <p className="text-foreground font-semibold text-sm">
+              No reels found for "{query || selectedSport}"
+            </p>
+            <p className="text-muted-foreground text-xs mt-1 text-center">
+              Try a different search term or category
+            </p>
+          </div>
+        )}
+      </div>
 
       <BottomNav />
     </div>
