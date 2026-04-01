@@ -230,7 +230,7 @@ const AthleteCard = ({
               </div>
 
               {/* Footer */}
-              <div className="w-full flex items-center justify-between">
+              <div className="w-full flex items-center justify-between mb-1.5">
                 <span className="text-xs font-bold" style={{ color: `hsl(${accentHsl})` }}>
                   {username}
                 </span>
@@ -245,6 +245,11 @@ const AthleteCard = ({
                   {label}
                 </span>
               </div>
+
+              {/* Watermark */}
+              <p className="text-[7px] tracking-widest text-muted-foreground/40 font-medium">
+                caydence.app
+              </p>
             </div>
 
             {/* Legend animated border */}
