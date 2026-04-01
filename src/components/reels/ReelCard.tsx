@@ -155,28 +155,28 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         {/* Right Side Action Bar */}
         <div className="absolute right-3 bottom-56 flex flex-col items-center gap-4 z-20">
           <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${liked ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
+            <div className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all ${liked ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
               <Heart className={`w-6 h-6 transition-all ${liked ? 'text-primary fill-primary scale-110' : 'text-foreground group-hover:text-primary'}`} />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">{formatCount(likesCount)}</span>
           </button>
 
           <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className="flex flex-col items-center gap-1 group">
-            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
               <MessageCircle className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">{formatCount(reel.comments_count)}</span>
           </button>
 
           <button onClick={handleSave} className="flex flex-col items-center gap-1 group">
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${saved ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
+            <div className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all ${saved ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
               <Bookmark className={`w-6 h-6 transition-all ${saved ? 'text-primary fill-primary' : 'text-foreground group-hover:text-primary'}`} />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">{saved ? 'Saved' : 'Save'}</span>
           </button>
 
           <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
-            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
               <Share2 className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">Share</span>
