@@ -28,6 +28,7 @@ const getTierFromScore = (score: number): string => {
 const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperienceProps) => {
   const [reels, setReels] = useState<Reel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isScoreRevealOpen, setIsScoreRevealOpen] = useState(false);
