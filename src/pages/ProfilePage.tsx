@@ -92,7 +92,7 @@ const ProfilePage = () => {
   const totalCoins = attempts.reduce((sum, a) => sum + a.coins_earned, 0);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0 lg:pl-[220px] xl:pl-[240px]">
       {/* Header */}
       <div className="relative pt-6 pb-8 px-6">
         <button onClick={() => navigate(-1)} className="absolute top-6 left-4">
