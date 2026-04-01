@@ -185,7 +185,7 @@ const SearchPage = () => {
       </div>
 
       {/* Results */}
-      <div className="p-4">{renderResults()}</div>
+      <div className="p-4 max-w-2xl mx-auto">{renderResults()}</div>
 
       <BottomNav />
     </div>
