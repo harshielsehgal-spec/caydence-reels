@@ -91,7 +91,7 @@ const SearchPage = () => {
         );
       case "Sports":
         return (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {demoResults.Sports.map((sport) => (
               <button
                 key={sport.id}
@@ -129,7 +129,7 @@ const SearchPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0 lg:pl-[220px] xl:pl-[240px]">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg p-4 space-y-4">
         <div className="flex items-center gap-3">
@@ -185,7 +185,7 @@ const SearchPage = () => {
       </div>
 
       {/* Results */}
-      <div className="p-4">{renderResults()}</div>
+      <div className="p-4 max-w-2xl mx-auto">{renderResults()}</div>
 
       <BottomNav />
     </div>

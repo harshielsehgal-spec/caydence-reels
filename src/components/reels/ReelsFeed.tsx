@@ -56,17 +56,17 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
   }
 
   return (
-    <div className="relative h-screen w-full bg-background">
-      {/* Sports filter + collection icon pinned at top */}
-      <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-background via-background/80 to-transparent">
-        <div className="flex items-center">
+    <div className="relative h-screen w-full bg-background lg:pl-[220px] xl:pl-[240px]">
+      {/* Sports filter + icons pinned at top */}
+      <div className="absolute top-0 left-0 right-0 z-30 bg-gradient-to-b from-background via-background/80 to-transparent lg:left-[220px] xl:left-[240px]">
+        <div className="flex items-center max-w-[480px] lg:max-w-none mx-auto lg:mx-0">
           <div className="flex-1 overflow-hidden">
             <SportsCategoryFilter selected={selectedCategory} onSelect={setSelectedCategory} />
           </div>
           {onOpenNotifications && (
             <button
               onClick={onOpenNotifications}
-              className="relative flex-shrink-0 w-9 h-9 rounded-full bg-background/40 backdrop-blur-sm border border-border/40 flex items-center justify-center hover:bg-primary/20 transition-all"
+              className="relative flex-shrink-0 w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm border border-border/40 flex items-center justify-center hover:bg-primary/20 transition-all"
             >
               <Bell className="w-5 h-5 text-primary" />
               {unreadNotifCount > 0 && (
@@ -79,7 +79,7 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
           {onOpenCollection && (
             <button
               onClick={onOpenCollection}
-              className="flex-shrink-0 mr-3 w-9 h-9 rounded-full bg-background/40 backdrop-blur-sm border border-border/40 flex items-center justify-center hover:bg-primary/20 transition-all"
+              className="flex-shrink-0 mr-3 w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm border border-border/40 flex items-center justify-center hover:bg-primary/20 transition-all"
             >
               <svg className="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -91,30 +91,33 @@ const ReelsFeed = ({ reels, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard,
         </div>
       </div>
 
+      {/* Reels scroll container — centered column on desktop */}
       <div
         ref={containerRef}
-        className="h-screen w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        className="h-screen w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide lg:flex lg:justify-center"
       >
-        {reels.map((reel) => (
-          <div
-            key={reel.id}
-            ref={setReelRef(reel.id)}
-            data-reel-id={reel.id}
-            className="h-screen w-full snap-start snap-always"
-          >
-            <ReelCard
-              reel={reel}
-              athleteId={athleteId}
-              onAnalyze={onAnalyze}
-              onOpenTips={onOpenTips}
-              onOpenLeaderboard={onOpenLeaderboard}
-              isVisible={visibleReelId === reel.id}
-              userScore={userScores[reel.id]}
-              isJoined={joinedChallenges[reel.id]}
-              attemptHistory={attemptHistories[reel.id] || []}
-            />
-          </div>
-        ))}
+        <div className="w-full lg:max-w-[480px]">
+          {reels.map((reel) => (
+            <div
+              key={reel.id}
+              ref={setReelRef(reel.id)}
+              data-reel-id={reel.id}
+              className="h-screen w-full snap-start snap-always"
+            >
+              <ReelCard
+                reel={reel}
+                athleteId={athleteId}
+                onAnalyze={onAnalyze}
+                onOpenTips={onOpenTips}
+                onOpenLeaderboard={onOpenLeaderboard}
+                isVisible={visibleReelId === reel.id}
+                userScore={userScores[reel.id]}
+                isJoined={joinedChallenges[reel.id]}
+                attemptHistory={attemptHistories[reel.id] || []}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

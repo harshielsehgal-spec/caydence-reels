@@ -82,12 +82,12 @@ const HomeFeed = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0 lg:pl-[220px] xl:pl-[240px]">
       <TopNavBar coins={coins} />
       
       <StoriesRow onStoryClick={handleStoryClick} />
       
-      <div className="divide-y divide-border/20">
+      <div className="divide-y divide-border/20 max-w-2xl mx-auto">
         {getPersonalizedFeed().map((reel) => (
           <FeedCard
             key={reel.id}

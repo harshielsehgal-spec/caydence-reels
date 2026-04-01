@@ -113,7 +113,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
 
   return (
     <div className="h-screen w-full flex-shrink-0 snap-start snap-always flex items-center justify-center bg-background">
-      <div className="relative w-full max-w-[420px] h-full mx-auto">
+      <div className="relative w-full max-w-[480px] h-full mx-auto lg:max-h-[calc(100vh-2rem)] lg:my-4 lg:rounded-2xl lg:overflow-hidden">
         {/* Video */}
         <div className="absolute inset-0 overflow-hidden rounded-xl md:rounded-2xl">
           <video ref={videoRef} src={reel.video_url} className="w-full h-full object-contain bg-black" muted loop playsInline />
@@ -136,7 +136,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
-            className="relative w-10 h-10 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center hover:bg-primary/20 transition-all group"
+            className="relative w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center hover:bg-primary/20 transition-all group"
           >
             <Trophy className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
             {isJoined && (
@@ -155,28 +155,28 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         {/* Right Side Action Bar */}
         <div className="absolute right-3 bottom-56 flex flex-col items-center gap-4 z-20">
           <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${liked ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
+            <div className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all ${liked ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
               <Heart className={`w-6 h-6 transition-all ${liked ? 'text-primary fill-primary scale-110' : 'text-foreground group-hover:text-primary'}`} />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">{formatCount(likesCount)}</span>
           </button>
 
           <button onClick={(e) => { e.stopPropagation(); setIsCommentsOpen(true); }} className="flex flex-col items-center gap-1 group">
-            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
               <MessageCircle className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">{formatCount(reel.comments_count)}</span>
           </button>
 
           <button onClick={handleSave} className="flex flex-col items-center gap-1 group">
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${saved ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
+            <div className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-all ${saved ? 'bg-primary/20' : 'bg-background/40 backdrop-blur-sm'}`}>
               <Bookmark className={`w-6 h-6 transition-all ${saved ? 'text-primary fill-primary' : 'text-foreground group-hover:text-primary'}`} />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">{saved ? 'Saved' : 'Save'}</span>
           </button>
 
           <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
-            <div className="w-11 h-11 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center">
               <Share2 className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
             <span className="text-xs font-semibold text-foreground drop-shadow-lg">Share</span>
@@ -186,7 +186,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         {/* Bottom Caption Module */}
         <div className="absolute inset-x-0 bottom-0 z-20">
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="relative px-4 pb-24 pt-16">
+          <div className="relative px-4 pb-24 lg:pb-8 pt-16">
             {/* Creator Info */}
             <div className="flex items-center gap-3 mb-3">
               <AvatarProgressRing score={userScore}>
@@ -224,14 +224,14 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             <div className="flex items-center gap-3 mt-4">
               <Button
                 onClick={(e) => { e.stopPropagation(); onOpenTips(reel); }}
-                className="flex-1 h-11 justify-center gap-2 bg-secondary/80 backdrop-blur-sm border border-border text-foreground hover:bg-secondary"
+                className="flex-1 h-11 min-h-[44px] justify-center gap-2 bg-secondary/80 backdrop-blur-sm border border-border text-foreground hover:bg-secondary"
               >
                 <Scan className="w-4 h-4" />
                 Analyze This Move
               </Button>
               <button
                 onClick={(e) => { e.stopPropagation(); onAnalyze(reel); }}
-                className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center glow-orange hover:scale-105 transition-transform"
+                className="w-12 h-12 min-w-[44px] min-h-[44px] rounded-full gradient-primary flex items-center justify-center glow-orange hover:scale-105 transition-transform active:scale-95"
               >
                 <Camera className="w-5 h-5 text-primary-foreground" />
               </button>
