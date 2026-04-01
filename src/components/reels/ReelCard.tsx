@@ -224,7 +224,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
             <div className="flex items-center gap-3 mt-4">
               <Button
                 onClick={(e) => { e.stopPropagation(); onOpenTips(reel); }}
-                className="flex-1 h-11 justify-center gap-2 bg-secondary/80 backdrop-blur-sm border border-border text-foreground hover:bg-secondary"
+                className="flex-1 h-11 min-h-[44px] justify-center gap-2 bg-secondary/80 backdrop-blur-sm border border-border text-foreground hover:bg-secondary"
               >
                 <Scan className="w-4 h-4" />
                 Analyze This Move
