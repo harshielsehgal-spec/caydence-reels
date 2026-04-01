@@ -14,6 +14,7 @@ const HomeFeed = () => {
   const [reels, setReels] = useState<Reel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [coins, setCoins] = useState(150);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedReel, setSelectedReel] = useState<Reel | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
