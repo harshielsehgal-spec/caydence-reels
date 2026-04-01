@@ -82,7 +82,7 @@ const HomeFeed = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 lg:pb-0 lg:pl-[220px] xl:pl-[240px]">
       <TopNavBar coins={coins} />
       
       <StoriesRow onStoryClick={handleStoryClick} />
