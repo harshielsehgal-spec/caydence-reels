@@ -52,9 +52,10 @@ const ProfilePage = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setFetchError(null);
 
     // Fetch attempts
-    const { data: attemptsData } = await supabase
+    const { data: attemptsData, error: attemptsError } = await supabase
       .from("reel_attempts")
       .select("id, reel_id, ai_match_score, coins_earned, created_at")
       .eq("athlete_id", athleteId)
