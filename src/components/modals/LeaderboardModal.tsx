@@ -33,6 +33,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalPlayers, setTotalPlayers] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const currentAthleteId = athleteId || localStorage.getItem("caydence_athlete_id") || "";
 
