@@ -30,9 +30,16 @@ const HomeFeed = () => {
 
   const loadReels = async () => {
     setIsLoading(true);
-    const data = await fetchReels();
-    setReels(data);
-    setIsLoading(false);
+    setFetchError(null);
+    try {
+      const data = await fetchReels();
+      setReels(data);
+    } catch (err) {
+      console.error("Failed to load feed:", err);
+      setFetchError("Failed to load feed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReelClick = (reel: Reel) => {
