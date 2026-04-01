@@ -63,20 +63,23 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
     const bd = generateBreakdown(score);
     setBreakdown(bd);
 
-    // Animate score counter
-    const duration = 1500;
+    // Animate score counter — 1.2s ease-out
+    const duration = 1200;
     const start = performance.now();
     const animate = (now: number) => {
       const elapsed = now - start;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayScore(Math.round(eased * score));
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(animate);
       } else {
+        // Impact moment
+        setImpactLanded(true);
+        setScoreFlash(true);
         setPhase("breakdown");
         if (score > 85) setShowConfetti(true);
+        setTimeout(() => setScoreFlash(false), 400);
         setTimeout(() => {
           setPhase("complete");
           setShowCoins(true);
