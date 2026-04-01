@@ -136,7 +136,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onOpenLeaderboard(reel); }}
-            className="relative w-10 h-10 rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center hover:bg-primary/20 transition-all group"
+            className="relative w-10 h-10 min-w-[44px] min-h-[44px] rounded-full bg-background/40 backdrop-blur-sm flex items-center justify-center hover:bg-primary/20 transition-all group"
           >
             <Trophy className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
             {isJoined && (

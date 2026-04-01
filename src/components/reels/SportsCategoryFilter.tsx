@@ -21,7 +21,7 @@ const SportsCategoryFilter = ({ selected, onSelect }: SportsCategoryFilterProps)
           <button
             key={cat.id}
             onClick={() => onSelect(cat.id)}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+            className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold transition-all ${
               selected === cat.id
                 ? "gradient-primary text-primary-foreground glow-orange"
                 : "bg-secondary/80 backdrop-blur-sm border border-border text-foreground hover:border-primary/40"
