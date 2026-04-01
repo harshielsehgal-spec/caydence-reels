@@ -44,6 +44,7 @@ const ProfilePage = () => {
 
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -51,13 +52,21 @@ const ProfilePage = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setFetchError(null);
 
     // Fetch attempts
-    const { data: attemptsData } = await supabase
+    const { data: attemptsData, error: attemptsError } = await supabase
       .from("reel_attempts")
       .select("id, reel_id, ai_match_score, coins_earned, created_at")
       .eq("athlete_id", athleteId)
       .order("created_at", { ascending: false });
+
+    if (attemptsError) {
+      console.error("Failed to load profile data:", attemptsError);
+      setFetchError("Failed to load profile data");
+      setLoading(false);
+      return;
+    }
 
     if (!attemptsData || attemptsData.length === 0) {
       setAttempts([]);
@@ -146,6 +155,21 @@ const ProfilePage = () => {
           </>
         )}
       </div>
+
+      {/* Error state */}
+      {fetchError && !loading && (
+        <div className="px-4 mb-6">
+          <div className="flex flex-col items-center py-10 bg-secondary/30 border border-border rounded-xl">
+            <p className="text-foreground font-semibold text-sm mb-2">{fetchError}</p>
+            <button
+              onClick={loadData}
+              className="px-5 py-2 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity min-h-[44px]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Attempt History */}
       <div className="px-4">

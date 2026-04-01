@@ -33,6 +33,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalPlayers, setTotalPlayers] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const currentAthleteId = athleteId || localStorage.getItem("caydence_athlete_id") || "";
 
@@ -43,6 +44,7 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
   const loadLeaderboard = async () => {
     if (!reel) return;
     setIsLoading(true);
+    setFetchError(null);
 
     // Query reel_attempts grouped by athlete_id
     const { data, error } = await supabase
@@ -50,7 +52,15 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
       .select("athlete_id, ai_match_score")
       .eq("reel_id", reel.id);
 
-    if (error || !data) {
+    if (error) {
+      console.error("Failed to load leaderboard:", error);
+      setFetchError("Failed to load leaderboard");
+      setLeaderboard([]);
+      setTotalPlayers(0);
+      setIsLoading(false);
+      return;
+    }
+    if (!data) {
       setLeaderboard([]);
       setTotalPlayers(0);
       setIsLoading(false);
@@ -179,6 +189,16 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
                   <Skeleton className="h-6 w-12" />
                 </div>
               ))
+            ) : fetchError ? (
+              <div className="flex flex-col items-center py-10">
+                <p className="text-foreground font-semibold text-sm mb-2">{fetchError}</p>
+                <button
+                  onClick={loadLeaderboard}
+                  className="px-5 py-2 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity min-h-[44px]"
+                >
+                  Retry
+                </button>
+              </div>
             ) : leaderboard.length === 0 ? (
               /* Empty state */
               <div className="flex flex-col items-center py-10">
