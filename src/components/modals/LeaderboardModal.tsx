@@ -189,6 +189,16 @@ const LeaderboardModal = ({ isOpen, onClose, reel, athleteId, isJoined = false, 
                   <Skeleton className="h-6 w-12" />
                 </div>
               ))
+            ) : fetchError ? (
+              <div className="flex flex-col items-center py-10">
+                <p className="text-foreground font-semibold text-sm mb-2">{fetchError}</p>
+                <button
+                  onClick={loadLeaderboard}
+                  className="px-5 py-2 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity min-h-[44px]"
+                >
+                  Retry
+                </button>
+              </div>
             ) : leaderboard.length === 0 ? (
               /* Empty state */
               <div className="flex flex-col items-center py-10">

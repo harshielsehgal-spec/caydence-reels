@@ -200,10 +200,43 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          <p className="text-muted-foreground">Loading reels...</p>
+      <div className="min-h-screen bg-background flex flex-col gap-0 lg:pl-[220px] xl:pl-[240px]">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-screen w-full flex flex-col p-4 gap-4 lg:max-w-[480px] lg:mx-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-secondary animate-pulse" />
+              <div className="space-y-2 flex-1">
+                <div className="h-3 w-28 bg-secondary rounded animate-pulse" />
+                <div className="h-2.5 w-20 bg-secondary rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="flex-1 bg-secondary rounded-xl animate-pulse" />
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-24 bg-secondary rounded-full animate-pulse" />
+              <div className="h-10 w-10 bg-secondary rounded-full animate-pulse" />
+              <div className="h-10 w-10 bg-secondary rounded-full animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center lg:pl-[220px] xl:pl-[240px]">
+        <div className="flex flex-col items-center gap-4 px-6 text-center">
+          <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <p className="text-foreground font-semibold">{fetchError}</p>
+          <p className="text-sm text-muted-foreground">Check your connection and try again</p>
+          <button
+            onClick={loadReels}
+            className="px-6 py-2.5 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity min-h-[44px]"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

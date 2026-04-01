@@ -156,6 +156,21 @@ const ProfilePage = () => {
         )}
       </div>
 
+      {/* Error state */}
+      {fetchError && !loading && (
+        <div className="px-4 mb-6">
+          <div className="flex flex-col items-center py-10 bg-secondary/30 border border-border rounded-xl">
+            <p className="text-foreground font-semibold text-sm mb-2">{fetchError}</p>
+            <button
+              onClick={loadData}
+              className="px-5 py-2 rounded-xl gradient-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity min-h-[44px]"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Attempt History */}
       <div className="px-4">
         <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2 font-['Space_Grotesk']">
