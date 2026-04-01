@@ -91,7 +91,7 @@ const SearchPage = () => {
         );
       case "Sports":
         return (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {demoResults.Sports.map((sport) => (
               <button
                 key={sport.id}
