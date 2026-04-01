@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReelCard from "./ReelCard";
 import SportsCategoryFilter from "./SportsCategoryFilter";
+import { Bell } from "lucide-react";
 import { Reel } from "@/lib/reels";
 
 interface ReelsFeedProps {
