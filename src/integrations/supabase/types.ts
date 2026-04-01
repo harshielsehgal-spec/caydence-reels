@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          type: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          type?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          type?: string
+        }
+        Relationships: []
+      }
       reel_attempts: {
         Row: {
           ai_match_score: number
