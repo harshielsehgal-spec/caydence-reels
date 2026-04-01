@@ -208,6 +208,22 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                   </div>
                 ))}
               </div>
+
+              {/* AI Coach Feedback */}
+              <div className="w-full mt-4 p-3 rounded-xl bg-primary/5 border border-primary/15">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Zap className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-primary">AI Coach</span>
+                </div>
+                {coachingFeedback ? (
+                  <p className="text-xs text-muted-foreground leading-relaxed">{coachingFeedback}</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-3/4" />
+                  </div>
+                )}
+              </div>
             )}
 
             {/* VS Creator Card */}
