@@ -1,7 +1,17 @@
 import ReelsExperience from "@/components/ReelsExperience";
 import BottomNav from "@/components/navigation/BottomNav";
 
-const DEMO_ATHLETE_ID = "demo-athlete-123";
+const getAthleteId = (): string => {
+  const key = "caydence_athlete_id";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+};
+
+const DEMO_ATHLETE_ID = getAthleteId();
 
 const Reels = () => {
   return (
