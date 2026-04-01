@@ -221,7 +221,7 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                     { label: "Arm Alignment", value: breakdown.armAlignment },
                     { label: "Hip Position", value: breakdown.hipPosition },
                     { label: "Timing Sync", value: breakdown.timingSync },
-                  ].map((item) => (
+                  ].map((item, idx) => (
                     <div key={item.label} className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">{item.label}</span>
@@ -229,8 +229,12 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                       </div>
                       <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
                         <div
-                          className="h-full rounded-full gradient-primary transition-all duration-700"
-                          style={{ width: `${item.value}%` }}
+                          className="h-full rounded-full gradient-primary"
+                          style={{
+                            width: `${item.value}%`,
+                            transition: `width 0.5s ease-out ${idx * 0.2}s`,
+                            animation: `bar-glow-pulse 0.7s ease-out ${0.5 + idx * 0.2}s both`,
+                          }}
                         />
                       </div>
                     </div>
