@@ -186,7 +186,7 @@ const ReelCard = ({ reel, athleteId, onAnalyze, onOpenTips, onOpenLeaderboard, i
         {/* Bottom Caption Module */}
         <div className="absolute inset-x-0 bottom-0 z-20">
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="relative px-4 pb-24 pt-16">
+          <div className="relative px-4 pb-24 lg:pb-8 pt-16">
             {/* Creator Info */}
             <div className="flex items-center gap-3 mb-3">
               <AvatarProgressRing score={userScore}>
