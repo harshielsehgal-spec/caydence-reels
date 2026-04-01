@@ -203,6 +203,8 @@ const ReelsExperience = ({ athleteId }: ReelsExperienceProps) => {
         joinedChallenges={joinedChallenges}
         attemptHistories={attemptHistories}
         onOpenCollection={() => setIsCollectionOpen(true)}
+        onOpenNotifications={() => setIsNotificationsOpen(true)}
+        unreadNotifCount={unreadNotifCount}
       />
 
       <UploadAttemptModal
