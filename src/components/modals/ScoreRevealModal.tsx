@@ -164,6 +164,16 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
         ) : (
           /* ── Score Reveal Phases ── */
           <div className="relative p-6 flex flex-col items-center">
+            {/* Radial flash on impact */}
+            {impactLanded && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle at center, hsl(23, 100%, 50%, 0.25) 0%, transparent 70%)',
+                  animation: 'radial-flash 0.8s ease-out forwards',
+                }}
+              />
+            )}
             {/* Score Ring */}
             <div className="relative my-4" style={{ width: ringSize, height: ringSize }}>
               <svg className="absolute inset-0 -rotate-90" width={ringSize} height={ringSize}>
