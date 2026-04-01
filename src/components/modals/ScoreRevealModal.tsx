@@ -122,7 +122,12 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl">
+       <DialogContent
+          className="sm:max-w-md bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl"
+          style={impactLanded ? {
+            animation: 'impact-shake 80ms ease-out, border-glow-pulse 0.8s ease-out forwards',
+          } : undefined}
+        >
         {/* Confetti layer */}
         {showConfetti && (
           <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
