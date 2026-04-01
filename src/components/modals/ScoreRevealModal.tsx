@@ -45,6 +45,8 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
   const [breakdown, setBreakdown] = useState<ScoreBreakdown>({ armAlignment: 0, hipPosition: 0, timingSync: 0 });
   const [showConfetti, setShowConfetti] = useState(false);
   const [showCoins, setShowCoins] = useState(false);
+  const [impactLanded, setImpactLanded] = useState(false);
+  const [scoreFlash, setScoreFlash] = useState(false);
   const frameRef = useRef<number>();
 
   useEffect(() => {
@@ -53,26 +55,31 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
       setPhase("counting");
       setShowConfetti(false);
       setShowCoins(false);
+      setImpactLanded(false);
+      setScoreFlash(false);
       return;
     }
 
     const bd = generateBreakdown(score);
     setBreakdown(bd);
 
-    // Animate score counter
-    const duration = 1500;
+    // Animate score counter — 1.2s ease-out
+    const duration = 1200;
     const start = performance.now();
     const animate = (now: number) => {
       const elapsed = now - start;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayScore(Math.round(eased * score));
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(animate);
       } else {
+        // Impact moment
+        setImpactLanded(true);
+        setScoreFlash(true);
         setPhase("breakdown");
         if (score > 85) setShowConfetti(true);
+        setTimeout(() => setScoreFlash(false), 400);
         setTimeout(() => {
           setPhase("complete");
           setShowCoins(true);
@@ -115,7 +122,12 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl">
+       <DialogContent
+          className="sm:max-w-md bg-card border-border text-foreground p-0 overflow-hidden rounded-2xl"
+          style={impactLanded ? {
+            animation: 'impact-shake 80ms ease-out, border-glow-pulse 0.8s ease-out forwards',
+          } : undefined}
+        >
         {/* Confetti layer */}
         {showConfetti && (
           <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
@@ -152,6 +164,16 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
         ) : (
           /* ── Score Reveal Phases ── */
           <div className="relative p-6 flex flex-col items-center">
+            {/* Radial flash on impact */}
+            {impactLanded && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle at center, hsl(23, 100%, 50%, 0.25) 0%, transparent 70%)',
+                  animation: 'radial-flash 0.8s ease-out forwards',
+                }}
+              />
+            )}
             {/* Score Ring */}
             <div className="relative my-4" style={{ width: ringSize, height: ringSize }}>
               <svg className="absolute inset-0 -rotate-90" width={ringSize} height={ringSize}>
@@ -175,7 +197,12 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-5xl font-black gradient-text">{displayScore}</span>
+                <span
+                  className="text-5xl font-black gradient-text"
+                  style={scoreFlash ? { animation: 'score-flash 0.4s ease-out forwards' } : undefined}
+                >
+                  {displayScore}
+                </span>
                 <span className="text-sm text-muted-foreground font-semibold">%</span>
               </div>
             </div>
@@ -194,7 +221,7 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                     { label: "Arm Alignment", value: breakdown.armAlignment },
                     { label: "Hip Position", value: breakdown.hipPosition },
                     { label: "Timing Sync", value: breakdown.timingSync },
-                  ].map((item) => (
+                  ].map((item, idx) => (
                     <div key={item.label} className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">{item.label}</span>
@@ -202,8 +229,12 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                       </div>
                       <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
                         <div
-                          className="h-full rounded-full gradient-primary transition-all duration-700"
-                          style={{ width: `${item.value}%` }}
+                          className="h-full rounded-full gradient-primary"
+                          style={{
+                            width: `${item.value}%`,
+                            transition: `width 0.5s ease-out ${idx * 0.2}s`,
+                            animation: `bar-glow-pulse 0.7s ease-out ${0.5 + idx * 0.2}s both`,
+                          }}
                         />
                       </div>
                     </div>

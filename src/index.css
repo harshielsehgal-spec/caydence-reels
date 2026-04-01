@@ -169,3 +169,36 @@
   0%, 100% { transform: rotateY(-5deg); }
   50% { transform: rotateY(5deg); }
 }
+
+/* Score Reveal — FIFA impact animations */
+@keyframes impact-shake {
+  0% { transform: translate(0, 0); }
+  15% { transform: translate(-2px, 1px); }
+  30% { transform: translate(2px, -1px); }
+  50% { transform: translate(-1px, 2px); }
+  70% { transform: translate(1px, -1px); }
+  85% { transform: translate(-1px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes score-flash {
+  0% { color: white; -webkit-text-fill-color: white; }
+  40% { color: white; -webkit-text-fill-color: white; }
+  100% { -webkit-text-fill-color: transparent; }
+}
+
+@keyframes border-glow-pulse {
+  0% { box-shadow: 0 0 20px 4px hsl(23, 100%, 50%, 0.7), inset 0 0 20px 2px hsl(23, 100%, 50%, 0.15); }
+  100% { box-shadow: 0 0 0 0 hsl(23, 100%, 50%, 0), inset 0 0 0 0 hsl(23, 100%, 50%, 0); }
+}
+
+@keyframes radial-flash {
+  0% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+@keyframes bar-glow-pulse {
+  0%, 60% { box-shadow: none; }
+  80% { box-shadow: 4px 0 12px 2px hsl(23, 100%, 50%, 0.6); }
+  100% { box-shadow: 0 0 0 0 hsl(23, 100%, 50%, 0); }
+}
