@@ -61,6 +61,13 @@ const ProfilePage = () => {
       .eq("athlete_id", athleteId)
       .order("created_at", { ascending: false });
 
+    if (attemptsError) {
+      console.error("Failed to load profile data:", attemptsError);
+      setFetchError("Failed to load profile data");
+      setLoading(false);
+      return;
+    }
+
     if (!attemptsData || attemptsData.length === 0) {
       setAttempts([]);
       setLoading(false);
