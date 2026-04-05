@@ -53,7 +53,7 @@ export async function uploadReelAttempt(
   videoFile: File
 ): Promise<{ success: boolean; score: number; coins: number; error?: string }> {
   try {
-    // Upload video to storage
+    // Upload video to Supabase storage
     const fileName = `${athleteId}/${Date.now()}_${videoFile.name}`;
     const { error: uploadError } = await supabase.storage
       .from('reel_attempts')
@@ -69,11 +69,61 @@ export async function uploadReelAttempt(
       .from('reel_attempts')
       .getPublicUrl(fileName);
 
-    // Generate AI match score (simulated - in production this would call an AI service)
-    const aiMatchScore = Math.floor(Math.random() * 26) + 70; // 70-95
-    const coinsEarned = Math.floor(aiMatchScore / 10) + 10; // 17-19 coins
+    // Fetch the reference reel video_url and sport from Supabase
+    const reelData = await supabase
+      .from('reels')
+      .select('video_url, sport')
+      .eq('id', reelId)
+      .single();
 
-    // Try to save attempt to database (but don't fail if it doesn't work)
+    if (reelData.error || !reelData.data) {
+      console.error('Could not fetch reel data:', reelData.error);
+      return { success: false, score: 0, coins: 0, error: 'Could not load reference reel.' };
+    }
+
+    const { video_url: referenceUrl, sport } = reelData.data;
+
+    // Fetch reference video as blob to send to backend
+    const refResponse = await fetch(referenceUrl);
+    const refBlob = await refResponse.blob();
+    const refFile = new File([refBlob], 'reference.mp4', { type: 'video/mp4' });
+
+    // Call FastAPI backend
+    const formData = new FormData();
+    formData.append('attempt_video', videoFile);
+    formData.append('reference_video', refFile);
+
+    const analyzeResponse = await fetch(
+      `https://caydence-reels-backend.onrender.com/reels/analyze?reel_id=${reelId}&sport=${sport || 'generic'}`,
+      { method: 'POST', body: formData }
+    );
+
+    if (!analyzeResponse.ok) {
+      throw new Error('Backend analyze call failed');
+    }
+
+    const { job_id } = await analyzeResponse.json();
+
+    // Poll for result every 1s, max 30 attempts
+    let aiMatchScore = 0;
+    for (let i = 0; i < 60; i++) {
+      await new Promise(res => setTimeout(res, 1000));
+      const resultResponse = await fetch(`https://caydence-reels-backend.onrender.com/reels/result/${job_id}`);
+      const resultData = await resultResponse.json();
+
+      if (resultData.status === 'complete' && resultData.result) {
+        aiMatchScore = resultData.result.score;
+        break;
+      }
+    }
+
+    if (aiMatchScore === 0) {
+      throw new Error('Scoring timed out');
+    }
+
+    const coinsEarned = Math.floor(aiMatchScore / 10) + 10;
+
+    // Save attempt to Supabase
     const { error: insertError } = await supabase
       .from('reel_attempts')
       .insert({
@@ -85,15 +135,14 @@ export async function uploadReelAttempt(
       });
 
     if (insertError) {
-      // Log DB errors but still show success to user for demo purposes
-      console.warn('DB insert failed (demo mode - continuing anyway):', insertError);
+      console.warn('DB insert failed (continuing anyway):', insertError);
     }
 
-    // Always return success with score and coins if storage upload worked
     return { success: true, score: aiMatchScore, coins: coinsEarned };
+
   } catch (err) {
     console.error('Upload attempt error:', err);
-    return { success: false, score: 0, coins: 0, error: 'Failed to upload attempt' };
+    return { success: false, score: 0, coins: 0, error: 'Analysis failed. Please try again.' };
   }
 }
 
@@ -108,22 +157,18 @@ export async function fetchLeaderboard(reelId: string): Promise<LeaderboardEntry
   return data as LeaderboardEntry[];
 }
 
-// Stubbed out - no Supabase writes for demo
 export async function toggleLike(reelId: string, userId: string, isLiked: boolean): Promise<boolean> {
   return true;
 }
 
-// Stubbed out - no Supabase writes for demo
 export async function toggleSave(reelId: string, userId: string, isSaved: boolean): Promise<boolean> {
   return true;
 }
 
-// Stubbed out - no Supabase reads for demo
 export async function checkUserLikedReel(reelId: string, userId: string): Promise<boolean> {
   return false;
 }
 
-// Stubbed out - no Supabase reads for demo
 export async function checkUserSavedReel(reelId: string, userId: string): Promise<boolean> {
   return false;
 }

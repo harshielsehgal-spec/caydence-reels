@@ -46,6 +46,7 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
   const [lastCoins, setLastCoins] = useState(0);
   const [lastSport, setLastSport] = useState("general");
   const [lastBreakdown, setLastBreakdown] = useState({ arm: 0, hip: 0, sync: 0 });
+  const [lastFeedback, setLastFeedback] = useState<string | null>(null);
 
   // Card collection state
   const [cardCollection, setCardCollection] = useState<Record<string, CollectedCard>>({});
@@ -68,6 +69,7 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
     };
     fetchUnread();
   }, [resolvedAthleteId, isNotificationsOpen]);
+
   useEffect(() => { loadReels(); }, []);
 
   const loadReels = async () => {
@@ -131,6 +133,7 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
     setLastCoins(coins);
     setLastSport(sport);
     setLastBreakdown(breakdown);
+    setLastFeedback(null); // Reset feedback — skeleton shows until Claude responds
 
     setUserScores(prev => ({ ...prev, [reelId]: score }));
     setAttemptCounts(prev => ({ ...prev, [reelId]: (prev[reelId] ?? 0) + 1 }));
@@ -160,6 +163,29 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
       }
       return prev;
     });
+
+    // Fire Claude feedback async — never blocks score reveal
+    fetch('https://caydence-reels-backend.onrender.com/reels/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sport: sport,
+        creator_name: selectedReel?.creator_username || 'the creator',
+        arm_score: breakdown.arm,
+        hip_score: breakdown.hip,
+        timing_score: breakdown.sync,
+        overall_score: score,
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Received feedback:', data.feedback);
+        if (data.feedback) setLastFeedback(data.feedback);
+      })
+      .catch(err => {
+        console.warn('Feedback fetch failed:', err);
+        setLastFeedback(null);
+      });
 
     setIsUploadModalOpen(false);
     setTimeout(() => setIsScoreRevealOpen(true), 300);
@@ -273,6 +299,7 @@ const ReelsExperience = ({ athleteId, preferredSports = [] }: ReelsExperiencePro
         score={lastScore}
         coins={lastCoins}
         sport={lastSport}
+        coachingFeedback={lastFeedback || undefined}
         onTryAgain={handleTryAgainFromReveal}
       />
 
