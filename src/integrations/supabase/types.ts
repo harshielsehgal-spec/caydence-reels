@@ -190,6 +190,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_attempt_scores: {
+        Args: { p_athlete_id: string; p_reel_id: string }
+        Returns: {
+          ai_match_score: number
+          created_at: string
+        }[]
+      }
+      get_leaderboard_scores: {
+        Args: { p_reel_id: string }
+        Returns: {
+          ai_match_score: number
+          athlete_id: string
+        }[]
+      }
       reel_leaderboard: {
         Args: { p_reel_id: string }
         Returns: {
