@@ -6,20 +6,16 @@ import { BACKEND_BASE, SkeletonData } from "./poseConstants";
  */
 export async function fetchReelSkeleton(
   referenceId: string,
-  signal: AbortSignal,
+  externalSignal: AbortSignal,
 ): Promise<SkeletonData | null> {
-  const timeout = setTimeout(() => {
-    // Surface as abort so the outer fetch rejects immediately
-    try {
-      (signal as any).dispatchEvent?.(new Event("abort"));
-    } catch {
-      /* ignore */
-    }
-  }, 10_000);
+  const ctl = new AbortController();
+  const onAbort = () => ctl.abort();
+  externalSignal.addEventListener("abort", onAbort);
+  const timeout = setTimeout(() => ctl.abort(), 10_000);
 
   try {
     const res = await fetch(`${BACKEND_BASE}/reels/${encodeURIComponent(referenceId)}/skeleton`, {
-      signal,
+      signal: ctl.signal,
     });
     if (!res.ok) return null;
     const json = (await res.json()) as SkeletonData;
@@ -29,5 +25,6 @@ export async function fetchReelSkeleton(
     return null;
   } finally {
     clearTimeout(timeout);
+    externalSignal.removeEventListener("abort", onAbort);
   }
 }
