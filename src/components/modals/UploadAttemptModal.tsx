@@ -1,9 +1,25 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, X, CheckCircle, Loader2, Camera, Award } from "lucide-react";
-import { Reel, uploadReelAttempt } from "@/lib/reels";
-import { toast } from "@/hooks/use-toast";
+import { Camera, Loader2, AlertCircle, Square, Smartphone } from "lucide-react";
+import { Reel } from "@/lib/reels";
+import { toast } from "sonner";
+import { detectMobile } from "@/lib/recorder/isMobile";
+import { fetchReelSkeleton } from "@/lib/recorder/skeletonFetch";
+import {
+  evaluateFraming,
+  FramingStatus,
+  MODEL_URL,
+  WASM_BASE_URL,
+  BACKEND_BASE,
+  SkeletonData,
+  PoseLandmark,
+} from "@/lib/recorder/poseConstants";
+import SkeletonGhostOverlay from "@/components/recorder/SkeletonGhostOverlay";
+import type {
+  PoseLandmarker as PoseLandmarkerType,
+  FilesetResolver as FilesetResolverType,
+} from "@mediapipe/tasks-vision";
 
 interface UploadAttemptModalProps {
   isOpen: boolean;
@@ -13,187 +29,567 @@ interface UploadAttemptModalProps {
   onResult?: (reelId: string, score: number) => void;
 }
 
-const UploadAttemptModal = ({ isOpen, onClose, reel, athleteId, onResult }: UploadAttemptModalProps) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [result, setResult] = useState<{ score: number; coins: number } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+type ModalState =
+  | { kind: "setup" }
+  | { kind: "permission-denied" }
+  | { kind: "model-error" }
+  | { kind: "pre-recording" }
+  | { kind: "countdown"; value: 3 | 2 | 1 }
+  | { kind: "recording"; startedAt: number }
+  | { kind: "uploading" }
+  | { kind: "done" };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('video/')) {
-        toast({ title: "Please select a video file", variant: "destructive" });
-        return;
-      }
-      if (file.size > 100 * 1024 * 1024) { // 100MB limit
-        toast({ title: "File size must be under 100MB", variant: "destructive" });
-        return;
-      }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setResult(null);
+const RECORD_MAX_MS = 15_000;
+const MIN_STOP_MS = 2_000;
+
+const UploadAttemptModal = ({
+  isOpen,
+  onClose,
+  reel,
+  athleteId,
+  onResult,
+}: UploadAttemptModalProps) => {
+  const isMobile = useState(() => detectMobile())[0];
+  const [state, setState] = useState<ModalState>({ kind: "setup" });
+  const [framing, setFraming] = useState<FramingStatus>({ kind: "pending" });
+  const [skeleton, setSkeleton] = useState<SkeletonData | null>(null);
+  const [recordSecondsLeft, setRecordSecondsLeft] = useState(15);
+  const [viewport, setViewport] = useState({ w: 0, h: 0 });
+
+  // Refs for resources that must not trigger re-renders
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const landmarkerRef = useRef<PoseLandmarkerType | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastFramingTickRef = useRef<number>(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<number | null>(null);
+  const recordTickerRef = useRef<number | null>(null);
+  const countdownTimerRef = useRef<number | null>(null);
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  const skeletonAbortRef = useRef<AbortController | null>(null);
+  const framingRef = useRef<FramingStatus>({ kind: "pending" });
+
+  // Mirror framing into a ref so countdown loop can see live updates
+  useEffect(() => {
+    framingRef.current = framing;
+  }, [framing]);
+
+  /** Hard cleanup of every external resource. Called on close, unmount, errors. */
+  const cleanupAll = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile || !reel) return;
-
-    setIsUploading(true);
-    const { success, score, coins, error } = await uploadReelAttempt(reel.id, athleteId, selectedFile);
-    setIsUploading(false);
-
-    if (success) {
-      // Use returned score or generate random fallback (80-97)
-      const finalScore = score || Math.floor(Math.random() * (97 - 80 + 1)) + 80;
-      setResult({ score: finalScore, coins });
-      onResult?.(reel.id, finalScore);
-      toast({ title: `Great attempt! You earned ${coins} coins! 🎉` });
-    } else {
-      toast({ title: error || "Upload failed", variant: "destructive" });
+    if (recordTimerRef.current !== null) {
+      clearTimeout(recordTimerRef.current);
+      recordTimerRef.current = null;
     }
-  };
+    if (recordTickerRef.current !== null) {
+      clearInterval(recordTickerRef.current);
+      recordTickerRef.current = null;
+    }
+    if (countdownTimerRef.current !== null) {
+      clearTimeout(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      try {
+        recorderRef.current.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+    recorderRef.current = null;
+    recordChunksRef.current = [];
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (landmarkerRef.current) {
+      try {
+        landmarkerRef.current.close();
+      } catch {
+        /* ignore */
+      }
+      landmarkerRef.current = null;
+    }
+    if (uploadAbortRef.current) {
+      uploadAbortRef.current.abort();
+      uploadAbortRef.current = null;
+    }
+    if (skeletonAbortRef.current) {
+      skeletonAbortRef.current.abort();
+      skeletonAbortRef.current = null;
+    }
+  }, []);
 
-  const handleClose = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setResult(null);
+  const handleClose = useCallback(() => {
+    cleanupAll();
+    setState({ kind: "setup" });
+    setFraming({ kind: "pending" });
+    setSkeleton(null);
+    setRecordSecondsLeft(15);
     onClose();
+  }, [cleanupAll, onClose]);
+
+  // ---- Setup: camera + MediaPipe + skeleton fetch (parallel) ----
+  const setupResources = useCallback(async () => {
+    if (!reel) return;
+    setState({ kind: "setup" });
+
+    // 1. Camera (must succeed to proceed)
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      streamRef.current = stream;
+    } catch (err) {
+      console.error("Camera permission denied:", err);
+      setState({ kind: "permission-denied" });
+      return;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play().catch(() => {});
+    }
+
+    // 2. Skeleton fetch (parallel, non-blocking)
+    skeletonAbortRef.current = new AbortController();
+    fetchReelSkeleton(reel.id, skeletonAbortRef.current.signal).then((data) => {
+      if (data) setSkeleton(data);
+    });
+
+    // 3. MediaPipe model (must succeed to proceed)
+    try {
+      const vision = await import("@mediapipe/tasks-vision");
+      const FilesetResolver: typeof FilesetResolverType = vision.FilesetResolver;
+      const PoseLandmarker: typeof PoseLandmarkerType = vision.PoseLandmarker;
+      const fileset = await FilesetResolver.forVisionTasks(WASM_BASE_URL);
+      const landmarker = await PoseLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numPoses: 1,
+      });
+      landmarkerRef.current = landmarker;
+    } catch (err) {
+      console.error("MediaPipe load failed:", err);
+      setState({ kind: "model-error" });
+      return;
+    }
+
+    setState({ kind: "pre-recording" });
+    startPoseLoop();
+  }, [reel]);
+
+  // ---- Pose loop: throttled framing evaluation ----
+  const startPoseLoop = useCallback(() => {
+    const tick = () => {
+      const video = videoRef.current;
+      const landmarker = landmarkerRef.current;
+      if (!video || !landmarker || video.readyState < 2) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const now = performance.now();
+      try {
+        const result = landmarker.detectForVideo(video, now);
+        const lms: PoseLandmark[] = (result.landmarks?.[0] as PoseLandmark[]) || [];
+
+        // Throttle to once per 200ms
+        if (now - lastFramingTickRef.current >= 200) {
+          lastFramingTickRef.current = now;
+          const status = evaluateFraming(lms);
+          setFraming(status);
+        }
+      } catch (err) {
+        // Detection errors are non-fatal — keep looping
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // ---- Countdown ----
+  const beginCountdown = useCallback(() => {
+    if (framingRef.current.kind !== "ok") return;
+    setState({ kind: "countdown", value: 3 });
+
+    const step = (n: 3 | 2 | 1) => {
+      countdownTimerRef.current = window.setTimeout(() => {
+        // Re-check framing before each tick
+        if (framingRef.current.kind !== "ok") {
+          setState({ kind: "pre-recording" });
+          return;
+        }
+        if (n === 1) {
+          beginRecording();
+        } else {
+          const next = (n - 1) as 2 | 1;
+          setState({ kind: "countdown", value: next });
+          step(next);
+        }
+      }, 1000);
+    };
+    step(3);
+  }, []);
+
+  // ---- Recording ----
+  const beginRecording = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    const mimeCandidates = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || "";
+
+    let recorder: MediaRecorder;
+    try {
+      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    } catch (err) {
+      console.error("MediaRecorder init failed:", err);
+      toast.error("Couldn't start recording. Try again.");
+      setState({ kind: "pre-recording" });
+      return;
+    }
+
+    recordChunksRef.current = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(recordChunksRef.current, {
+        type: mimeType || "video/webm",
+      });
+      uploadBlob(blob);
+    };
+
+    recorderRef.current = recorder;
+    const startedAt = performance.now();
+    recorder.start();
+    setState({ kind: "recording", startedAt });
+    setRecordSecondsLeft(15);
+
+    // Auto-stop at 15s
+    recordTimerRef.current = window.setTimeout(() => {
+      stopRecording();
+    }, RECORD_MAX_MS);
+
+    // Tick the visible countdown
+    recordTickerRef.current = window.setInterval(() => {
+      const elapsed = (performance.now() - startedAt) / 1000;
+      const left = Math.max(0, Math.ceil(15 - elapsed));
+      setRecordSecondsLeft(left);
+    }, 200);
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (recordTimerRef.current !== null) {
+      clearTimeout(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (recordTickerRef.current !== null) {
+      clearInterval(recordTickerRef.current);
+      recordTickerRef.current = null;
+    }
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+    setState({ kind: "uploading" });
+  }, []);
+
+  // ---- Upload ----
+  const uploadBlob = useCallback(
+    async (blob: Blob) => {
+      if (!reel) return;
+      uploadAbortRef.current = new AbortController();
+      const timeout = setTimeout(() => uploadAbortRef.current?.abort(), 30_000);
+
+      try {
+        const fd = new FormData();
+        const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+        fd.append("file", blob, `attempt.${ext}`);
+        fd.append("reel_id", reel.id);
+
+        const res = await fetch(`${BACKEND_BASE}/reels/upload_recorded`, {
+          method: "POST",
+          body: fd,
+          signal: uploadAbortRef.current.signal,
+        });
+
+        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+        const payload = await res.json();
+
+        // analyze_v2 payload — extract score defensively
+        const score: number =
+          payload?.score ??
+          payload?.overall_score ??
+          payload?.result?.score ??
+          0;
+
+        setState({ kind: "done" });
+        onResult?.(reel.id, Math.round(score));
+        handleClose();
+      } catch (err) {
+        if ((err as any)?.name === "AbortError") {
+          // closed by user — handleClose already ran
+          return;
+        }
+        console.error("Upload failed:", err);
+        toast.error("Something went wrong. Try again.");
+        setState({ kind: "pre-recording" });
+      } finally {
+        clearTimeout(timeout);
+        uploadAbortRef.current = null;
+      }
+    },
+    [reel, onResult, handleClose],
+  );
+
+  // ---- Lifecycle ----
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isMobile) return;
+    setupResources();
+    return () => {
+      cleanupAll();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isMobile, reel?.id]);
+
+  // Track viewport dimensions of the camera container for skeleton scaling
+  useEffect(() => {
+    if (!isOpen) return;
+    const measure = () => {
+      const el = containerRef.current;
+      if (el) {
+        setViewport({ w: el.clientWidth, h: el.clientHeight });
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [isOpen, state.kind]);
+
+  // ---- Render helpers ----
+  const renderDesktopGate = () => (
+    <div className="space-y-6 py-6 text-center">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
+        <Smartphone className="h-10 w-10 text-primary" />
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-foreground">Open this on your phone</h3>
+        <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+          Recording your attempt requires the rear camera. Open Caydence on your phone to try this reel.
+        </p>
+      </div>
+      <Button onClick={handleClose} variant="secondary" className="w-full">
+        Got it
+      </Button>
+    </div>
+  );
+
+  const renderPermissionDenied = () => (
+    <div className="space-y-6 py-6 text-center">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
+        <AlertCircle className="h-10 w-10 text-destructive" />
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-foreground">Camera access needed</h3>
+        <p className="text-sm text-muted-foreground">
+          Allow camera access in your browser settings, then reload to record your attempt.
+        </p>
+      </div>
+      <Button onClick={() => window.location.reload()} className="w-full">
+        Reload
+      </Button>
+    </div>
+  );
+
+  const renderModelError = () => (
+    <div className="space-y-6 py-6 text-center">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10">
+        <AlertCircle className="h-10 w-10 text-destructive" />
+      </div>
+      <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-foreground">Couldn't load pose model</h3>
+        <p className="text-sm text-muted-foreground">Check your connection and retry.</p>
+      </div>
+      <Button onClick={setupResources} className="w-full">
+        Retry
+      </Button>
+    </div>
+  );
+
+  const renderRecorder = () => {
+    const status = framing;
+    const showGreen = status.kind === "ok";
+    const isRecording = state.kind === "recording";
+    const isCountdown = state.kind === "countdown";
+    const isUploading = state.kind === "uploading";
+    const isSetup = state.kind === "setup";
+
+    const stopEnabled =
+      isRecording && performance.now() - state.startedAt >= MIN_STOP_MS;
+
+    return (
+      <div className="space-y-3">
+        <div
+          ref={containerRef}
+          className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-black"
+        >
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            autoPlay
+            className="h-full w-full object-cover"
+          />
+
+          {/* Skeleton ghost overlay */}
+          <SkeletonGhostOverlay
+            skeleton={skeleton}
+            viewportWidth={viewport.w}
+            viewportHeight={viewport.h}
+          />
+
+          {/* Recording timer (top center) */}
+          {isRecording && (
+            <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/70 px-4 py-1.5 text-3xl font-bold tabular-nums text-white">
+              {recordSecondsLeft}
+            </div>
+          )}
+
+          {/* Recording dot (top left) */}
+          {isRecording && (
+            <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+              <span className="text-xs font-semibold text-white">REC</span>
+            </div>
+          )}
+
+          {/* Framing status pill */}
+          {!isRecording && !isCountdown && !isUploading && !isSetup && (
+            <div
+              className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs font-semibold ${
+                showGreen
+                  ? "bg-emerald-500/90 text-white"
+                  : "bg-amber-500/90 text-white"
+              }`}
+            >
+              {showGreen
+                ? "Ready"
+                : status.kind === "fail"
+                  ? status.hint
+                  : "Checking framing…"}
+            </div>
+          )}
+
+          {/* Countdown overlay */}
+          {isCountdown && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <span className="text-[10rem] font-black leading-none text-white drop-shadow-2xl">
+                {state.value}
+              </span>
+            </div>
+          )}
+
+          {/* Setup loading */}
+          {isSetup && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-white/80">Preparing camera…</p>
+            </div>
+          )}
+
+          {/* Uploading overlay */}
+          {isUploading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-base font-semibold text-white">Analyzing your reel…</p>
+            </div>
+          )}
+        </div>
+
+        {/* Action button */}
+        {state.kind === "pre-recording" && (
+          <Button
+            onClick={beginCountdown}
+            disabled={!showGreen}
+            className="h-12 w-full"
+          >
+            <Camera className="mr-2 h-4 w-4" />
+            Record attempt
+          </Button>
+        )}
+        {isRecording && (
+          <Button
+            onClick={stopRecording}
+            disabled={!stopEnabled}
+            variant="destructive"
+            className="h-12 w-full"
+          >
+            <Square className="mr-2 h-4 w-4 fill-current" />
+            {stopEnabled ? "Stop recording" : "Recording…"}
+          </Button>
+        )}
+        {isCountdown && (
+          <Button disabled className="h-12 w-full" variant="secondary">
+            Get ready…
+          </Button>
+        )}
+        {(isSetup || isUploading) && (
+          <Button disabled className="h-12 w-full" variant="secondary">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {isSetup ? "Loading…" : "Uploading…"}
+          </Button>
+        )}
+      </div>
+    );
   };
 
-  const resetUpload = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    setResult(null);
-  };
+  // Force a periodic re-render during recording so stopEnabled flips at 2s
+  // (avoids needing a separate state slice for stop-button gating)
+  useEffect(() => {
+    if (state.kind !== "recording") return;
+    const id = window.setInterval(() => setRecordSecondsLeft((s) => s), 200);
+    return () => clearInterval(id);
+  }, [state.kind]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-white">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) handleClose();
+      }}
+    >
+      <DialogContent className="max-w-md border-border bg-background p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-            <Camera className="w-5 h-5 text-[#FF7A00]" />
-            {result ? "Analysis Complete!" : "Upload Your Attempt"}
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Camera className="h-4 w-4 text-primary" />
+            {reel ? `Record: ${reel.title}` : "Record your attempt"}
           </DialogTitle>
         </DialogHeader>
 
-        {result ? (
-          // Result View
-          <div className="space-y-6 py-4">
-            <div className="text-center space-y-4">
-              <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center shadow-lg shadow-orange-500/30">
-                <CheckCircle className="w-12 h-12 text-white" />
-              </div>
-              
-              <div>
-                <p className="text-gray-400 text-sm mb-2">AI Match Score</p>
-                <p className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FF7A00] to-[#FF5C00]">
-                  {result.score}%
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 bg-slate-800/50 rounded-full px-4 py-2 mx-auto w-fit">
-                <Award className="w-5 h-5 text-[#FF7A00]" />
-                <span className="font-bold text-white">+{result.coins} Coins Earned</span>
-              </div>
-
-              {reel && (
-                <p className="text-gray-400 text-sm">
-                  Great work on "{reel.title}"! Keep practicing to improve your score.
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={resetUpload}
-                variant="outline"
-                className="flex-1 border-slate-700 text-white hover:bg-slate-800"
-              >
-                Try Again
-              </Button>
-              <Button
-                onClick={handleClose}
-                className="flex-1 bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] text-white hover:opacity-90"
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        ) : (
-          // Upload View
-          <div className="space-y-4 py-4">
-            {reel && (
-              <div className="bg-slate-800/50 rounded-lg p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] flex items-center justify-center text-sm font-bold text-white">
-                  {reel.creator_initials}
-                </div>
-                <div>
-                  <p className="font-semibold text-white text-sm">{reel.title}</p>
-                  <p className="text-xs text-gray-400">{reel.creator_username}</p>
-                </div>
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {previewUrl ? (
-              <div className="relative rounded-xl overflow-hidden aspect-[9/16] max-h-[300px] bg-black">
-                <video
-                  src={previewUrl}
-                  className="w-full h-full object-contain"
-                  controls
-                  muted
-                />
-                <button
-                  onClick={resetUpload}
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-slate-900/80 flex items-center justify-center hover:bg-slate-800"
-                >
-                  <X className="w-4 h-4 text-white" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full aspect-video rounded-xl border-2 border-dashed border-slate-700 hover:border-[#FF7A00] transition-colors flex flex-col items-center justify-center gap-3 bg-slate-800/30"
-              >
-                <div className="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-[#FF7A00]" />
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold text-white">Tap to upload video</p>
-                  <p className="text-xs text-gray-400 mt-1">MP4, MOV up to 100MB</p>
-                </div>
-              </button>
-            )}
-
-            <Button
-              onClick={handleUpload}
-              disabled={!selectedFile || isUploading}
-              className="w-full h-12 bg-gradient-to-r from-[#FF7A00] to-[#FF5C00] text-white font-semibold hover:opacity-90 disabled:opacity-50"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Analyzing with AI...
-                </>
-              ) : (
-                "Upload & Analyze"
-              )}
-            </Button>
-
-            <p className="text-xs text-gray-500 text-center">
-              Our AI will compare your technique and give you a match score
-            </p>
-          </div>
-        )}
+        {!isMobile
+          ? renderDesktopGate()
+          : state.kind === "permission-denied"
+            ? renderPermissionDenied()
+            : state.kind === "model-error"
+              ? renderModelError()
+              : renderRecorder()}
       </DialogContent>
     </Dialog>
   );
