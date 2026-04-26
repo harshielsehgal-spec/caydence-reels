@@ -496,6 +496,7 @@ const UploadAttemptModal = ({
         }
         console.error("[upload] failed:", err);
         const msg = (err as Error)?.message || String(err);
+        setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
         toast.error(msg);
         setState({ kind: "pre-recording" });
       } finally {
