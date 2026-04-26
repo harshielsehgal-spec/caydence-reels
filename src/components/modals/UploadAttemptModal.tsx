@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertCircle, Square, Smartphone } from "lucide-react";
+import { Camera, Loader2, AlertCircle, Square, Smartphone, SwitchCamera } from "lucide-react";
 import { Reel } from "@/lib/reels";
 import { toast } from "sonner";
 import { detectMobile } from "@/lib/recorder/isMobile";
@@ -55,6 +55,8 @@ const UploadAttemptModal = ({
   const [skeleton, setSkeleton] = useState<SkeletonData | null>(null);
   const [recordSecondsLeft, setRecordSecondsLeft] = useState(15);
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
 
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -144,7 +146,7 @@ const UploadAttemptModal = ({
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true,
       });
       streamRef.current = stream;
@@ -185,7 +187,60 @@ const UploadAttemptModal = ({
 
     setState({ kind: "pre-recording" });
     startPoseLoop();
-  }, [reel]);
+  }, [reel, facingMode]);
+
+  /** Swap camera (rear <-> front) without disrupting modal state. Stops old stream first. */
+  const switchCamera = useCallback(async () => {
+    // Only allowed in pre-recording (no swap mid-record / mid-countdown / mid-upload)
+    if (state.kind !== "pre-recording" || isSwitchingCamera) return;
+    const next = facingMode === "environment" ? "user" : "environment";
+    setIsSwitchingCamera(true);
+
+    // Stop current pose loop + stream cleanly (keep landmarker alive — reuse it)
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: next, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setFacingMode(next);
+      setFraming({ kind: "pending" });
+      startPoseLoop();
+    } catch (err) {
+      console.error("Camera switch failed:", err);
+      toast.error("Couldn't switch camera. Try again.");
+      // Try to restore previous facing
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true,
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        startPoseLoop();
+      } catch {
+        setState({ kind: "permission-denied" });
+      }
+    } finally {
+      setIsSwitchingCamera(false);
+    }
+  }, [state.kind, isSwitchingCamera, facingMode]);
 
   // ---- Pose loop: throttled framing evaluation ----
   const startPoseLoop = useCallback(() => {
@@ -568,6 +623,8 @@ const UploadAttemptModal = ({
     return () => clearInterval(id);
   }, [state.kind]);
 
+  const showFlipButton = isMobile && state.kind === "pre-recording";
+
   return (
     <Dialog
       open={isOpen}
@@ -575,21 +632,46 @@ const UploadAttemptModal = ({
         if (!open) handleClose();
       }}
     >
-      <DialogContent className="max-w-md border-border bg-background p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <Camera className="h-4 w-4 text-primary" />
-            {reel ? `Record: ${reel.title}` : "Record your attempt"}
+      <DialogContent
+        className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-none translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-y-auto rounded-none border-0 bg-background p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-md sm:rounded-lg sm:border sm:border-border"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingLeft: "env(safe-area-inset-left)",
+          paddingRight: "env(safe-area-inset-right)",
+        }}
+      >
+        <DialogHeader className="shrink-0 px-4 pt-4 pr-20 sm:px-6 sm:pt-6">
+          <DialogTitle className="flex items-start gap-2 pr-2 text-base leading-tight">
+            <Camera className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <span className="break-words">
+              {reel ? `Record: ${reel.title}` : "Record your attempt"}
+            </span>
           </DialogTitle>
         </DialogHeader>
 
-        {!isMobile
-          ? renderDesktopGate()
-          : state.kind === "permission-denied"
-            ? renderPermissionDenied()
-            : state.kind === "model-error"
-              ? renderModelError()
-              : renderRecorder()}
+        {showFlipButton && (
+          <button
+            type="button"
+            onClick={switchCamera}
+            disabled={isSwitchingCamera}
+            aria-label="Flip camera"
+            className="absolute right-12 top-4 z-50 inline-flex h-8 w-8 items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-30"
+            style={{ top: "calc(env(safe-area-inset-top) + 1rem)" }}
+          >
+            <SwitchCamera className="h-4 w-4" />
+          </button>
+        )}
+
+        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
+          {!isMobile
+            ? renderDesktopGate()
+            : state.kind === "permission-denied"
+              ? renderPermissionDenied()
+              : state.kind === "model-error"
+                ? renderModelError()
+                : renderRecorder()}
+        </div>
       </DialogContent>
     </Dialog>
   );
