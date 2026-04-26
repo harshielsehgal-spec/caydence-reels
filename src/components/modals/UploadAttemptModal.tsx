@@ -416,6 +416,7 @@ const UploadAttemptModal = ({
         fd.append("reel_id", reel.id);
 
         const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
+        setDebugInfo((d) => ({ ...d, targetUrl, status: "pending", error: undefined }));
         const fdEntries: Record<string, string> = {};
         fd.forEach((value, key) => {
           fdEntries[key] =
@@ -436,12 +437,15 @@ const UploadAttemptModal = ({
             body: fd,
             signal: uploadAbortRef.current.signal,
           });
+          setDebugInfo((d) => ({ ...d, status: "sent" }));
         } catch (fetchErr) {
           console.error("[upload] fetch threw before response:", fetchErr);
           if ((fetchErr as any)?.name === "AbortError") {
+            setDebugInfo((d) => ({ ...d, status: "error", error: "Aborted" }));
             return;
           }
           const msg = (fetchErr as Error)?.message || String(fetchErr);
+          setDebugInfo((d) => ({ ...d, status: "error", error: `Network: ${msg}` }));
           toast.error(`Network error: ${msg}`);
           setState({ kind: "pre-recording" });
           return;
@@ -455,6 +459,12 @@ const UploadAttemptModal = ({
           bodyPreview: rawBody.slice(0, 500),
           bodyLength: rawBody.length,
         });
+        setDebugInfo((d) => ({
+          ...d,
+          status: "received",
+          httpStatus: res.status,
+          bodyPreview: rawBody.slice(0, 200),
+        }));
 
         if (!res.ok) {
           throw new Error(`Upload failed: ${res.status} ${res.statusText} — ${rawBody.slice(0, 200)}`);
