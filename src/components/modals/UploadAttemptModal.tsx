@@ -41,6 +41,8 @@ type ModalState =
 
 const RECORD_MAX_MS = 15_000;
 const MIN_STOP_MS = 2_000;
+const AUTO_HOLD_MS = 3_000;
+const AUTO_HOLD_TICK_MS = 100;
 
 const UploadAttemptModal = ({
   isOpen,
