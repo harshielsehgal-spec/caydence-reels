@@ -557,7 +557,9 @@ const UploadAttemptModal = ({
               }`}
             >
               {showGreen
-                ? "Ready"
+                ? autoHoldMs > 0
+                  ? `Hold position… ${Math.max(1, Math.ceil((AUTO_HOLD_MS - autoHoldMs) / 1000))}`
+                  : "Ready"
                 : status.kind === "fail"
                   ? status.hint
                   : "Checking framing…"}
