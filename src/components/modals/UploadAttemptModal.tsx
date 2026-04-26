@@ -41,6 +41,8 @@ type ModalState =
 
 const RECORD_MAX_MS = 15_000;
 const MIN_STOP_MS = 2_000;
+const AUTO_HOLD_MS = 3_000;
+const AUTO_HOLD_TICK_MS = 100;
 
 const UploadAttemptModal = ({
   isOpen,
@@ -57,6 +59,7 @@ const UploadAttemptModal = ({
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
+  const [autoHoldMs, setAutoHoldMs] = useState(0); // 0..AUTO_HOLD_MS while holding green
 
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -73,6 +76,9 @@ const UploadAttemptModal = ({
   const uploadAbortRef = useRef<AbortController | null>(null);
   const skeletonAbortRef = useRef<AbortController | null>(null);
   const framingRef = useRef<FramingStatus>({ kind: "pending" });
+
+  const autoHoldRafRef = useRef<number | null>(null);
+  const autoHoldStartRef = useRef<number | null>(null);
 
   // Mirror framing into a ref so countdown loop can see live updates
   useEffect(() => {
@@ -97,6 +103,11 @@ const UploadAttemptModal = ({
       clearTimeout(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
+    if (autoHoldRafRef.current !== null) {
+      cancelAnimationFrame(autoHoldRafRef.current);
+      autoHoldRafRef.current = null;
+    }
+    autoHoldStartRef.current = null;
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
       try {
         recorderRef.current.stop();
@@ -134,6 +145,7 @@ const UploadAttemptModal = ({
     setFraming({ kind: "pending" });
     setSkeleton(null);
     setRecordSecondsLeft(15);
+    setAutoHoldMs(0);
     onClose();
   }, [cleanupAll, onClose]);
 
@@ -545,7 +557,9 @@ const UploadAttemptModal = ({
               }`}
             >
               {showGreen
-                ? "Ready"
+                ? autoHoldMs > 0
+                  ? `Hold position… ${Math.max(1, Math.ceil((AUTO_HOLD_MS - autoHoldMs) / 1000))}`
+                  : "Ready"
                 : status.kind === "fail"
                   ? status.hint
                   : "Checking framing…"}
@@ -580,14 +594,49 @@ const UploadAttemptModal = ({
 
         {/* Action button */}
         {state.kind === "pre-recording" && (
-          <Button
-            onClick={beginCountdown}
-            disabled={!showGreen}
-            className="h-12 w-full"
-          >
-            <Camera className="mr-2 h-4 w-4" />
-            Record attempt
-          </Button>
+          <div className="relative">
+            <Button
+              onClick={beginCountdown}
+              disabled={!showGreen}
+              className="h-12 w-full"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Record attempt
+            </Button>
+            {/* Auto-hold progress ring (right side of button) */}
+            {autoHoldMs > 0 && showGreen && (
+              <div
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+                aria-hidden
+              >
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke="hsl(var(--primary-foreground) / 0.25)"
+                    strokeWidth="2.5"
+                  />
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke="hsl(var(--primary-foreground))"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 11}
+                    strokeDashoffset={
+                      2 * Math.PI * 11 * (1 - Math.min(1, autoHoldMs / AUTO_HOLD_MS))
+                    }
+                    transform="rotate(-90 14 14)"
+                    style={{ transition: "stroke-dashoffset 100ms linear" }}
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
         )}
         {isRecording && (
           <Button
@@ -622,6 +671,53 @@ const UploadAttemptModal = ({
     const id = window.setInterval(() => setRecordSecondsLeft((s) => s), 200);
     return () => clearInterval(id);
   }, [state.kind]);
+
+  // Auto-start: hold green framing for AUTO_HOLD_MS to trigger countdown automatically.
+  // Drops back to 0 if framing leaves "ok". Only active during pre-recording.
+  useEffect(() => {
+    const cancel = () => {
+      if (autoHoldRafRef.current !== null) {
+        cancelAnimationFrame(autoHoldRafRef.current);
+        autoHoldRafRef.current = null;
+      }
+      autoHoldStartRef.current = null;
+      setAutoHoldMs(0);
+    };
+
+    if (state.kind !== "pre-recording" || framing.kind !== "ok") {
+      cancel();
+      return;
+    }
+
+    autoHoldStartRef.current = performance.now();
+    let lastTick = 0;
+
+    const loop = () => {
+      // If framing slipped or state changed, abort.
+      if (framingRef.current.kind !== "ok" || autoHoldStartRef.current === null) {
+        cancel();
+        return;
+      }
+      const now = performance.now();
+      const elapsed = now - autoHoldStartRef.current;
+      if (elapsed >= AUTO_HOLD_MS) {
+        autoHoldStartRef.current = null;
+        autoHoldRafRef.current = null;
+        setAutoHoldMs(AUTO_HOLD_MS);
+        beginCountdown();
+        return;
+      }
+      if (now - lastTick >= AUTO_HOLD_TICK_MS) {
+        lastTick = now;
+        setAutoHoldMs(elapsed);
+      }
+      autoHoldRafRef.current = requestAnimationFrame(loop);
+    };
+    autoHoldRafRef.current = requestAnimationFrame(loop);
+
+    return cancel;
+  }, [state.kind, framing.kind, beginCountdown]);
+
 
   const showFlipButton = isMobile && state.kind === "pre-recording";
 
