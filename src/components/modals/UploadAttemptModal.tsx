@@ -61,6 +61,17 @@ const UploadAttemptModal = ({
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [autoHoldMs, setAutoHoldMs] = useState(0); // 0..AUTO_HOLD_MS while holding green
 
+  // ---- DEBUG OVERLAY STATE (temporary, shown during uploading) ----
+  const [debugInfo, setDebugInfo] = useState<{
+    blobSize: number;
+    blobType: string;
+    targetUrl: string;
+    status: "idle" | "pending" | "sent" | "received" | "error";
+    httpStatus?: number;
+    error?: string;
+    bodyPreview?: string;
+  }>({ blobSize: 0, blobType: "", targetUrl: "", status: "idle" });
+
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
