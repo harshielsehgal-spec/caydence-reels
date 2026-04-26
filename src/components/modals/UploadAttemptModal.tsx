@@ -334,6 +334,12 @@ const UploadAttemptModal = ({
       const blob = new Blob(recordChunksRef.current, {
         type: mimeType || "video/webm",
       });
+      console.log("[upload] recording stopped", {
+        blobSize: blob.size,
+        blobSizeKB: (blob.size / 1024).toFixed(1) + " KB",
+        mimeType: blob.type,
+        chunkCount: recordChunksRef.current.length,
+      });
       uploadBlob(blob);
     };
 
@@ -389,14 +395,58 @@ const UploadAttemptModal = ({
         fd.append("file", blob, `attempt.${ext}`);
         fd.append("reel_id", reel.id);
 
-        const res = await fetch(`${BACKEND_BASE}/reels/upload_recorded`, {
-          method: "POST",
-          body: fd,
-          signal: uploadAbortRef.current.signal,
+        const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
+        const fdEntries: Record<string, string> = {};
+        fd.forEach((value, key) => {
+          fdEntries[key] =
+            value instanceof Blob
+              ? `Blob(size=${value.size}, type=${value.type}, name=${(value as File).name ?? "n/a"})`
+              : String(value);
+        });
+        console.log("[upload] sending request", {
+          targetUrl,
+          reelId: reel.id,
+          formData: fdEntries,
         });
 
-        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-        const payload = await res.json();
+        let res: Response;
+        try {
+          res = await fetch(targetUrl, {
+            method: "POST",
+            body: fd,
+            signal: uploadAbortRef.current.signal,
+          });
+        } catch (fetchErr) {
+          console.error("[upload] fetch threw before response:", fetchErr);
+          if ((fetchErr as any)?.name === "AbortError") {
+            return;
+          }
+          const msg = (fetchErr as Error)?.message || String(fetchErr);
+          toast.error(`Network error: ${msg}`);
+          setState({ kind: "pre-recording" });
+          return;
+        }
+
+        const rawBody = await res.text();
+        console.log("[upload] response received", {
+          status: res.status,
+          ok: res.ok,
+          statusText: res.statusText,
+          bodyPreview: rawBody.slice(0, 500),
+          bodyLength: rawBody.length,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Upload failed: ${res.status} ${res.statusText} — ${rawBody.slice(0, 200)}`);
+        }
+
+        let payload: any = null;
+        try {
+          payload = rawBody ? JSON.parse(rawBody) : null;
+        } catch (parseErr) {
+          console.error("[upload] JSON parse failed:", parseErr, "body was:", rawBody);
+          throw new Error(`Bad JSON from server: ${(parseErr as Error).message}`);
+        }
 
         // analyze_v2 payload — extract score defensively
         const score: number =
@@ -404,6 +454,7 @@ const UploadAttemptModal = ({
           payload?.overall_score ??
           payload?.result?.score ??
           0;
+        console.log("[upload] parsed score:", score, "from payload:", payload);
 
         setState({ kind: "done" });
         onResult?.(reel.id, Math.round(score));
@@ -413,8 +464,9 @@ const UploadAttemptModal = ({
           // closed by user — handleClose already ran
           return;
         }
-        console.error("Upload failed:", err);
-        toast.error("Something went wrong. Try again.");
+        console.error("[upload] failed:", err);
+        const msg = (err as Error)?.message || String(err);
+        toast.error(msg);
         setState({ kind: "pre-recording" });
       } finally {
         clearTimeout(timeout);
