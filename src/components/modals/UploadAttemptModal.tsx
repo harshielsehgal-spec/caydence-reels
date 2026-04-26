@@ -635,6 +635,53 @@ const UploadAttemptModal = ({
     return () => clearInterval(id);
   }, [state.kind]);
 
+  // Auto-start: hold green framing for AUTO_HOLD_MS to trigger countdown automatically.
+  // Drops back to 0 if framing leaves "ok". Only active during pre-recording.
+  useEffect(() => {
+    const cancel = () => {
+      if (autoHoldRafRef.current !== null) {
+        cancelAnimationFrame(autoHoldRafRef.current);
+        autoHoldRafRef.current = null;
+      }
+      autoHoldStartRef.current = null;
+      setAutoHoldMs(0);
+    };
+
+    if (state.kind !== "pre-recording" || framing.kind !== "ok") {
+      cancel();
+      return;
+    }
+
+    autoHoldStartRef.current = performance.now();
+    let lastTick = 0;
+
+    const loop = () => {
+      // If framing slipped or state changed, abort.
+      if (framingRef.current.kind !== "ok" || autoHoldStartRef.current === null) {
+        cancel();
+        return;
+      }
+      const now = performance.now();
+      const elapsed = now - autoHoldStartRef.current;
+      if (elapsed >= AUTO_HOLD_MS) {
+        autoHoldStartRef.current = null;
+        autoHoldRafRef.current = null;
+        setAutoHoldMs(AUTO_HOLD_MS);
+        beginCountdown();
+        return;
+      }
+      if (now - lastTick >= AUTO_HOLD_TICK_MS) {
+        lastTick = now;
+        setAutoHoldMs(elapsed);
+      }
+      autoHoldRafRef.current = requestAnimationFrame(loop);
+    };
+    autoHoldRafRef.current = requestAnimationFrame(loop);
+
+    return cancel;
+  }, [state.kind, framing.kind, beginCountdown]);
+
+
   const showFlipButton = isMobile && state.kind === "pre-recording";
 
   return (
