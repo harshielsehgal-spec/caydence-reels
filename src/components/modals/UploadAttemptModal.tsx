@@ -671,6 +671,21 @@ const UploadAttemptModal = ({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="text-base font-semibold text-white">Analyzing your reel…</p>
+
+              {/* DEBUG OVERLAY — temporary, remove after diagnosing upload failures */}
+              <div className="absolute top-2 left-2 right-2 z-50 max-w-full rounded-md bg-black/90 p-2 font-mono text-[10px] leading-tight text-white break-all border border-white/20">
+                <div className="font-bold text-white/90 mb-1">DEBUG · upload</div>
+                <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
+                <div>URL: {debugInfo.targetUrl || "—"}</div>
+                <div>
+                  Status: {debugInfo.status}
+                  {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
+                </div>
+                {debugInfo.error && <div className="text-red-400">Error: {debugInfo.error}</div>}
+                {debugInfo.bodyPreview && (
+                  <div className="mt-1 text-white/70">Body: {debugInfo.bodyPreview}</div>
+                )}
+              </div>
             </div>
           )}
         </div>
