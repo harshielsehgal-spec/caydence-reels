@@ -11,16 +11,11 @@ import {
   FramingStatus,
   MODEL_URL,
   WASM_BASE_URL,
-  BACKEND_BASE as POSE_BACKEND_BASE,
   SkeletonData,
   PoseLandmark,
 } from "@/lib/recorder/poseConstants";
 
-// Resolve backend URL with explicit fallback so the upload URL is never empty.
-const BACKEND_BASE: string =
-  (import.meta.env?.VITE_BACKEND_URL as string | undefined) ||
-  POSE_BACKEND_BASE ||
-  "https://caydence-reels-backend.onrender.com";
+const BACKEND_BASE = "https://caydence-reels-backend.onrender.com";
 import SkeletonGhostOverlay from "@/components/recorder/SkeletonGhostOverlay";
 import type {
   PoseLandmarker as PoseLandmarkerType,
