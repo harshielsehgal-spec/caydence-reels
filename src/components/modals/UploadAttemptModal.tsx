@@ -334,6 +334,12 @@ const UploadAttemptModal = ({
       const blob = new Blob(recordChunksRef.current, {
         type: mimeType || "video/webm",
       });
+      console.log("[upload] recording stopped", {
+        blobSize: blob.size,
+        blobSizeKB: (blob.size / 1024).toFixed(1) + " KB",
+        mimeType: blob.type,
+        chunkCount: recordChunksRef.current.length,
+      });
       uploadBlob(blob);
     };
 
