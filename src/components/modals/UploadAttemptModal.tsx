@@ -351,6 +351,15 @@ const UploadAttemptModal = ({
         mimeType: blob.type,
         chunkCount: recordChunksRef.current.length,
       });
+      setDebugInfo((d) => ({
+        ...d,
+        blobSize: blob.size,
+        blobType: blob.type,
+        status: "pending",
+        error: undefined,
+        httpStatus: undefined,
+        bodyPreview: undefined,
+      }));
       uploadBlob(blob);
     };
 
