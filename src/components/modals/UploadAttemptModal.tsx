@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertCircle, Square, Smartphone } from "lucide-react";
+import { Camera, Loader2, AlertCircle, Square, Smartphone, SwitchCamera } from "lucide-react";
 import { Reel } from "@/lib/reels";
 import { toast } from "sonner";
 import { detectMobile } from "@/lib/recorder/isMobile";
