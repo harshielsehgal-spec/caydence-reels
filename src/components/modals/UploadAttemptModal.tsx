@@ -335,7 +335,11 @@ const UploadAttemptModal = ({
 
     let recorder: MediaRecorder;
     try {
-      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorderOptions: MediaRecorderOptions = {
+        videoBitsPerSecond: 800_000, // ~1-2 MB for 15s clips; pose only needs landmarks
+      };
+      if (mimeType) recorderOptions.mimeType = mimeType;
+      recorder = new MediaRecorder(stream, recorderOptions);
     } catch (err) {
       console.error("MediaRecorder init failed:", err);
       toast.error("Couldn't start recording. Try again.");
