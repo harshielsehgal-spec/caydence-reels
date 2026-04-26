@@ -145,6 +145,7 @@ const UploadAttemptModal = ({
     setFraming({ kind: "pending" });
     setSkeleton(null);
     setRecordSecondsLeft(15);
+    setAutoHoldMs(0);
     onClose();
   }, [cleanupAll, onClose]);
 
