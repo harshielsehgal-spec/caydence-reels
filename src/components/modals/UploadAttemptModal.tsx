@@ -61,6 +61,17 @@ const UploadAttemptModal = ({
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [autoHoldMs, setAutoHoldMs] = useState(0); // 0..AUTO_HOLD_MS while holding green
 
+  // ---- DEBUG OVERLAY STATE (temporary, shown during uploading) ----
+  const [debugInfo, setDebugInfo] = useState<{
+    blobSize: number;
+    blobType: string;
+    targetUrl: string;
+    status: "idle" | "pending" | "sent" | "received" | "error";
+    httpStatus?: number;
+    error?: string;
+    bodyPreview?: string;
+  }>({ blobSize: 0, blobType: "", targetUrl: "", status: "idle" });
+
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -340,6 +351,15 @@ const UploadAttemptModal = ({
         mimeType: blob.type,
         chunkCount: recordChunksRef.current.length,
       });
+      setDebugInfo((d) => ({
+        ...d,
+        blobSize: blob.size,
+        blobType: blob.type,
+        status: "pending",
+        error: undefined,
+        httpStatus: undefined,
+        bodyPreview: undefined,
+      }));
       uploadBlob(blob);
     };
 
@@ -396,6 +416,7 @@ const UploadAttemptModal = ({
         fd.append("reel_id", reel.id);
 
         const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
+        setDebugInfo((d) => ({ ...d, targetUrl, status: "pending", error: undefined }));
         const fdEntries: Record<string, string> = {};
         fd.forEach((value, key) => {
           fdEntries[key] =
@@ -416,12 +437,15 @@ const UploadAttemptModal = ({
             body: fd,
             signal: uploadAbortRef.current.signal,
           });
+          setDebugInfo((d) => ({ ...d, status: "sent" }));
         } catch (fetchErr) {
           console.error("[upload] fetch threw before response:", fetchErr);
           if ((fetchErr as any)?.name === "AbortError") {
+            setDebugInfo((d) => ({ ...d, status: "error", error: "Aborted" }));
             return;
           }
           const msg = (fetchErr as Error)?.message || String(fetchErr);
+          setDebugInfo((d) => ({ ...d, status: "error", error: `Network: ${msg}` }));
           toast.error(`Network error: ${msg}`);
           setState({ kind: "pre-recording" });
           return;
@@ -435,6 +459,12 @@ const UploadAttemptModal = ({
           bodyPreview: rawBody.slice(0, 500),
           bodyLength: rawBody.length,
         });
+        setDebugInfo((d) => ({
+          ...d,
+          status: "received",
+          httpStatus: res.status,
+          bodyPreview: rawBody.slice(0, 200),
+        }));
 
         if (!res.ok) {
           throw new Error(`Upload failed: ${res.status} ${res.statusText} — ${rawBody.slice(0, 200)}`);
@@ -466,6 +496,7 @@ const UploadAttemptModal = ({
         }
         console.error("[upload] failed:", err);
         const msg = (err as Error)?.message || String(err);
+        setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
         toast.error(msg);
         setState({ kind: "pre-recording" });
       } finally {
@@ -640,6 +671,21 @@ const UploadAttemptModal = ({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="text-base font-semibold text-white">Analyzing your reel…</p>
+
+              {/* DEBUG OVERLAY — temporary, remove after diagnosing upload failures */}
+              <div className="absolute top-2 left-2 right-2 z-50 max-w-full rounded-md bg-black/90 p-2 font-mono text-[10px] leading-tight text-white break-all border border-white/20">
+                <div className="font-bold text-white/90 mb-1">DEBUG · upload</div>
+                <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
+                <div>URL: {debugInfo.targetUrl || "—"}</div>
+                <div>
+                  Status: {debugInfo.status}
+                  {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
+                </div>
+                {debugInfo.error && <div className="text-red-400">Error: {debugInfo.error}</div>}
+                {debugInfo.bodyPreview && (
+                  <div className="mt-1 text-white/70">Body: {debugInfo.bodyPreview}</div>
+                )}
+              </div>
             </div>
           )}
         </div>
