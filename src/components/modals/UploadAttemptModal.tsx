@@ -57,6 +57,7 @@ const UploadAttemptModal = ({
   const [viewport, setViewport] = useState({ w: 0, h: 0 });
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
+  const [autoHoldMs, setAutoHoldMs] = useState(0); // 0..AUTO_HOLD_MS while holding green
 
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
