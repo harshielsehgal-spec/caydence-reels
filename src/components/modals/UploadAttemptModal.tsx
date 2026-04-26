@@ -187,7 +187,60 @@ const UploadAttemptModal = ({
 
     setState({ kind: "pre-recording" });
     startPoseLoop();
-  }, [reel]);
+  }, [reel, facingMode]);
+
+  /** Swap camera (rear <-> front) without disrupting modal state. Stops old stream first. */
+  const switchCamera = useCallback(async () => {
+    // Only allowed in pre-recording (no swap mid-record / mid-countdown / mid-upload)
+    if (state.kind !== "pre-recording" || isSwitchingCamera) return;
+    const next = facingMode === "environment" ? "user" : "environment";
+    setIsSwitchingCamera(true);
+
+    // Stop current pose loop + stream cleanly (keep landmarker alive — reuse it)
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: next, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setFacingMode(next);
+      setFraming({ kind: "pending" });
+      startPoseLoop();
+    } catch (err) {
+      console.error("Camera switch failed:", err);
+      toast.error("Couldn't switch camera. Try again.");
+      // Try to restore previous facing
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true,
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        startPoseLoop();
+      } catch {
+        setState({ kind: "permission-denied" });
+      }
+    } finally {
+      setIsSwitchingCamera(false);
+    }
+  }, [state.kind, isSwitchingCamera, facingMode]);
 
   // ---- Pose loop: throttled framing evaluation ----
   const startPoseLoop = useCallback(() => {
