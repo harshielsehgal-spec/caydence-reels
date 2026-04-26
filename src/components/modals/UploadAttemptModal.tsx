@@ -594,14 +594,49 @@ const UploadAttemptModal = ({
 
         {/* Action button */}
         {state.kind === "pre-recording" && (
-          <Button
-            onClick={beginCountdown}
-            disabled={!showGreen}
-            className="h-12 w-full"
-          >
-            <Camera className="mr-2 h-4 w-4" />
-            Record attempt
-          </Button>
+          <div className="relative">
+            <Button
+              onClick={beginCountdown}
+              disabled={!showGreen}
+              className="h-12 w-full"
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              Record attempt
+            </Button>
+            {/* Auto-hold progress ring (right side of button) */}
+            {autoHoldMs > 0 && showGreen && (
+              <div
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+                aria-hidden
+              >
+                <svg width="28" height="28" viewBox="0 0 28 28">
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke="hsl(var(--primary-foreground) / 0.25)"
+                    strokeWidth="2.5"
+                  />
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke="hsl(var(--primary-foreground))"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 11}
+                    strokeDashoffset={
+                      2 * Math.PI * 11 * (1 - Math.min(1, autoHoldMs / AUTO_HOLD_MS))
+                    }
+                    transform="rotate(-90 14 14)"
+                    style={{ transition: "stroke-dashoffset 100ms linear" }}
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
         )}
         {isRecording && (
           <Button
