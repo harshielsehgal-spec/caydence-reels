@@ -103,6 +103,11 @@ const UploadAttemptModal = ({
       clearTimeout(countdownTimerRef.current);
       countdownTimerRef.current = null;
     }
+    if (autoHoldRafRef.current !== null) {
+      cancelAnimationFrame(autoHoldRafRef.current);
+      autoHoldRafRef.current = null;
+    }
+    autoHoldStartRef.current = null;
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
       try {
         recorderRef.current.stop();
