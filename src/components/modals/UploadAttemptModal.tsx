@@ -77,6 +77,9 @@ const UploadAttemptModal = ({
   const skeletonAbortRef = useRef<AbortController | null>(null);
   const framingRef = useRef<FramingStatus>({ kind: "pending" });
 
+  const autoHoldRafRef = useRef<number | null>(null);
+  const autoHoldStartRef = useRef<number | null>(null);
+
   // Mirror framing into a ref so countdown loop can see live updates
   useEffect(() => {
     framingRef.current = framing;
