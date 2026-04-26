@@ -11,10 +11,16 @@ import {
   FramingStatus,
   MODEL_URL,
   WASM_BASE_URL,
-  BACKEND_BASE,
+  BACKEND_BASE as POSE_BACKEND_BASE,
   SkeletonData,
   PoseLandmark,
 } from "@/lib/recorder/poseConstants";
+
+// Resolve backend URL with explicit fallback so the upload URL is never empty.
+const BACKEND_BASE: string =
+  (import.meta.env?.VITE_BACKEND_URL as string | undefined) ||
+  POSE_BACKEND_BASE ||
+  "https://caydence-reels-backend.onrender.com";
 import SkeletonGhostOverlay from "@/components/recorder/SkeletonGhostOverlay";
 import type {
   PoseLandmarker as PoseLandmarkerType,
@@ -329,7 +335,11 @@ const UploadAttemptModal = ({
 
     let recorder: MediaRecorder;
     try {
-      recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorderOptions: MediaRecorderOptions = {
+        videoBitsPerSecond: 800_000, // ~1-2 MB for 15s clips; pose only needs landmarks
+      };
+      if (mimeType) recorderOptions.mimeType = mimeType;
+      recorder = new MediaRecorder(stream, recorderOptions);
     } catch (err) {
       console.error("MediaRecorder init failed:", err);
       toast.error("Couldn't start recording. Try again.");
