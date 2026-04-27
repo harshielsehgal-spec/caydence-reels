@@ -431,7 +431,21 @@ const UploadAttemptModal = ({
         fd.append("reel_id", reel.id);
 
         const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
-        setDebugInfo((d) => ({ ...d, targetUrl, status: "pending", error: undefined }));
+        const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
+        const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
+        console.log("[upload] pre-fetch env", {
+          navigatorOnline: onlineNow,
+          pageProtocol,
+          targetUrl,
+        });
+        setDebugInfo((d) => ({
+          ...d,
+          targetUrl,
+          status: "pending",
+          error: undefined,
+          online: onlineNow,
+          pageProtocol,
+        }));
 
         const fdEntries: Record<string, string> = {};
         fd.forEach((value, key) => {
