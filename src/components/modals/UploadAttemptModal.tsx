@@ -416,10 +416,13 @@ const UploadAttemptModal = ({
   const uploadBlob = useCallback(
     async (blob: Blob) => {
       if (!reel) return;
-      uploadAbortRef.current = new AbortController();
-      const timeout = setTimeout(() => uploadAbortRef.current?.abort(), 30_000);
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+      let watchdog: ReturnType<typeof setTimeout> | null = null;
 
       try {
+        uploadAbortRef.current = new AbortController();
+        timeout = setTimeout(() => uploadAbortRef.current?.abort(), 120_000);
+
         const fd = new FormData();
         const ext = blob.type.includes("mp4") ? "mp4" : "webm";
         fd.append("file", blob, `attempt.${ext}`);
@@ -427,6 +430,7 @@ const UploadAttemptModal = ({
 
         const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
         setDebugInfo((d) => ({ ...d, targetUrl, status: "pending", error: undefined }));
+
         const fdEntries: Record<string, string> = {};
         fd.forEach((value, key) => {
           fdEntries[key] =
@@ -440,26 +444,20 @@ const UploadAttemptModal = ({
           formData: fdEntries,
         });
 
-        let res: Response;
-        try {
-          res = await fetch(targetUrl, {
-            method: "POST",
-            body: fd,
-            signal: uploadAbortRef.current.signal,
-          });
-          setDebugInfo((d) => ({ ...d, status: "sent" }));
-        } catch (fetchErr) {
-          console.error("[upload] fetch threw before response:", fetchErr);
-          if ((fetchErr as any)?.name === "AbortError") {
-            setDebugInfo((d) => ({ ...d, status: "error", error: "Aborted" }));
-            return;
-          }
-          const msg = (fetchErr as Error)?.message || String(fetchErr);
-          setDebugInfo((d) => ({ ...d, status: "error", error: `Network: ${msg}` }));
-          toast.error(`Network error: ${msg}`);
-          setState({ kind: "pre-recording" });
-          return;
-        }
+        watchdog = setTimeout(() => {
+          setDebugInfo((d) =>
+            d.status === "pending"
+              ? { ...d, status: "error", error: "Fetch did not return in 60s — likely silently failed" }
+              : d,
+          );
+        }, 60_000);
+
+        const res = await fetch(targetUrl, {
+          method: "POST",
+          body: fd,
+          signal: uploadAbortRef.current.signal,
+        });
+        setDebugInfo((d) => ({ ...d, status: "sent" }));
 
         const rawBody = await res.text();
         console.log("[upload] response received", {
@@ -501,16 +499,18 @@ const UploadAttemptModal = ({
         handleClose();
       } catch (err) {
         if ((err as any)?.name === "AbortError") {
-          // closed by user — handleClose already ran
-          return;
+          console.error("[upload] aborted:", err);
+        } else {
+          console.error("[upload] failed:", err);
         }
-        console.error("[upload] failed:", err);
-        const msg = (err as Error)?.message || String(err);
+        const errorName = (err as Error)?.name || "Error";
+        const errorMessage = (err as Error)?.message || String(err);
+        const msg = `Caught: ${errorName}: ${errorMessage}`;
         setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
         toast.error(msg);
-        setState({ kind: "pre-recording" });
       } finally {
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
+        if (watchdog) clearTimeout(watchdog);
         uploadAbortRef.current = null;
       }
     },
