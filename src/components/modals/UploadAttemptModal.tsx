@@ -71,6 +71,8 @@ const UploadAttemptModal = ({
     httpStatus?: number;
     error?: string;
     bodyPreview?: string;
+    online?: boolean;
+    pageProtocol?: string;
   }>({
     blobSize: 0,
     blobType: "",
@@ -429,7 +431,21 @@ const UploadAttemptModal = ({
         fd.append("reel_id", reel.id);
 
         const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
-        setDebugInfo((d) => ({ ...d, targetUrl, status: "pending", error: undefined }));
+        const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
+        const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
+        console.log("[upload] pre-fetch env", {
+          navigatorOnline: onlineNow,
+          pageProtocol,
+          targetUrl,
+        });
+        setDebugInfo((d) => ({
+          ...d,
+          targetUrl,
+          status: "pending",
+          error: undefined,
+          online: onlineNow,
+          pageProtocol,
+        }));
 
         const fdEntries: Record<string, string> = {};
         fd.forEach((value, key) => {
@@ -687,6 +703,9 @@ const UploadAttemptModal = ({
                 <div className="font-bold text-white/90 mb-1">DEBUG · upload</div>
                 <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
                 <div>URL: {debugInfo.targetUrl || "—"}</div>
+                <div>
+                  Online: {debugInfo.online === undefined ? "—" : String(debugInfo.online)} · Proto: {debugInfo.pageProtocol || "—"}
+                </div>
                 <div>
                   Status: {debugInfo.status}
                   {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
