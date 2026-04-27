@@ -71,6 +71,8 @@ const UploadAttemptModal = ({
     httpStatus?: number;
     error?: string;
     bodyPreview?: string;
+    online?: boolean;
+    pageProtocol?: string;
   }>({
     blobSize: 0,
     blobType: "",
