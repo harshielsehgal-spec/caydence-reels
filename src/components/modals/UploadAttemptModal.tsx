@@ -728,6 +728,9 @@ const UploadAttemptModal = ({
                   Status: {debugInfo.status}
                   {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
                 </div>
+                {debugInfo.pending && (
+                  <div className="text-yellow-300">Pending: {debugInfo.pending}</div>
+                )}
                 {debugInfo.error && <div className="text-red-400">Error: {debugInfo.error}</div>}
                 {debugInfo.bodyPreview && (
                   <div className="mt-1 text-white/70">Body: {debugInfo.bodyPreview}</div>
