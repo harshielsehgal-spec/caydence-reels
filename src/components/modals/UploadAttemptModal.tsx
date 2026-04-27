@@ -73,6 +73,7 @@ const UploadAttemptModal = ({
     bodyPreview?: string;
     online?: boolean;
     pageProtocol?: string;
+    pending?: string;
   }>({
     blobSize: 0,
     blobType: "",
