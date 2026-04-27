@@ -14,13 +14,13 @@ import {
   SkeletonData,
   PoseLandmark,
 } from "@/lib/recorder/poseConstants";
-
-const BACKEND_BASE = "https://caydence-reels-backend.onrender.com";
 import SkeletonGhostOverlay from "@/components/recorder/SkeletonGhostOverlay";
 import type {
   PoseLandmarker as PoseLandmarkerType,
   FilesetResolver as FilesetResolverType,
 } from "@mediapipe/tasks-vision";
+
+const BACKEND_BASE = "https://caydence-reels-backend.onrender.com";
 
 interface UploadAttemptModalProps {
   isOpen: boolean;
@@ -71,7 +71,12 @@ const UploadAttemptModal = ({
     httpStatus?: number;
     error?: string;
     bodyPreview?: string;
-  }>({ blobSize: 0, blobType: "", targetUrl: "", status: "idle" });
+  }>({
+    blobSize: 0,
+    blobType: "",
+    targetUrl: `${BACKEND_BASE}/reels/upload_recorded`,
+    status: "idle",
+  });
 
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
