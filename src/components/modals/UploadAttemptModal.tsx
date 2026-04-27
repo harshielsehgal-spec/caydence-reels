@@ -704,6 +704,9 @@ const UploadAttemptModal = ({
                 <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
                 <div>URL: {debugInfo.targetUrl || "—"}</div>
                 <div>
+                  Online: {debugInfo.online === undefined ? "—" : String(debugInfo.online)} · Proto: {debugInfo.pageProtocol || "—"}
+                </div>
+                <div>
                   Status: {debugInfo.status}
                   {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
                 </div>
