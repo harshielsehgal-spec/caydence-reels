@@ -73,6 +73,7 @@ const UploadAttemptModal = ({
     bodyPreview?: string;
     online?: boolean;
     pageProtocol?: string;
+    pending?: string;
   }>({
     blobSize: 0,
     blobType: "",
@@ -417,35 +418,49 @@ const UploadAttemptModal = ({
   // ---- Upload ----
   const uploadBlob = useCallback(
     async (blob: Blob) => {
+      // (1) FIRST: capture env + set pending immediately so overlay always shows live state
+      const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
+      const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
+      const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
+      setDebugInfo((d) => ({
+        ...d,
+        targetUrl,
+        status: "pending",
+        error: undefined,
+        pending: undefined,
+        online: onlineNow,
+        pageProtocol,
+      }));
+      console.log("[upload] uploadBlob entered", { onlineNow, pageProtocol, targetUrl });
+
       if (!reel) return;
       let timeout: ReturnType<typeof setTimeout> | null = null;
       let watchdog: ReturnType<typeof setTimeout> | null = null;
+      let pending5: ReturnType<typeof setTimeout> | null = null;
+      let pending15: ReturnType<typeof setTimeout> | null = null;
+      let pending30: ReturnType<typeof setTimeout> | null = null;
+      let pending60: ReturnType<typeof setTimeout> | null = null;
 
       try {
         uploadAbortRef.current = new AbortController();
         timeout = setTimeout(() => uploadAbortRef.current?.abort(), 120_000);
 
+        // (2) Time-bucketed pending markers — only update if still pending
+        const bump = (label: string) =>
+          setDebugInfo((d) =>
+            d.status === "pending"
+              ? { ...d, pending: (d.pending ? d.pending + " · " : "") + label }
+              : d,
+          );
+        pending5 = setTimeout(() => bump("5s"), 5_000);
+        pending15 = setTimeout(() => bump("15s"), 15_000);
+        pending30 = setTimeout(() => bump("30s"), 30_000);
+        pending60 = setTimeout(() => bump("60s"), 60_000);
+
         const fd = new FormData();
         const ext = blob.type.includes("mp4") ? "mp4" : "webm";
         fd.append("file", blob, `attempt.${ext}`);
         fd.append("reel_id", reel.id);
-
-        const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
-        const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
-        const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
-        console.log("[upload] pre-fetch env", {
-          navigatorOnline: onlineNow,
-          pageProtocol,
-          targetUrl,
-        });
-        setDebugInfo((d) => ({
-          ...d,
-          targetUrl,
-          status: "pending",
-          error: undefined,
-          online: onlineNow,
-          pageProtocol,
-        }));
 
         const fdEntries: Record<string, string> = {};
         fd.forEach((value, key) => {
@@ -502,7 +517,6 @@ const UploadAttemptModal = ({
           throw new Error(`Bad JSON from server: ${(parseErr as Error).message}`);
         }
 
-        // analyze_v2 payload — extract score defensively
         const score: number =
           payload?.score ??
           payload?.overall_score ??
@@ -527,6 +541,10 @@ const UploadAttemptModal = ({
       } finally {
         if (timeout) clearTimeout(timeout);
         if (watchdog) clearTimeout(watchdog);
+        if (pending5) clearTimeout(pending5);
+        if (pending15) clearTimeout(pending15);
+        if (pending30) clearTimeout(pending30);
+        if (pending60) clearTimeout(pending60);
         uploadAbortRef.current = null;
       }
     },
@@ -710,6 +728,9 @@ const UploadAttemptModal = ({
                   Status: {debugInfo.status}
                   {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
                 </div>
+                {debugInfo.pending && (
+                  <div className="text-yellow-300">Pending: {debugInfo.pending}</div>
+                )}
                 {debugInfo.error && <div className="text-red-400">Error: {debugInfo.error}</div>}
                 {debugInfo.bodyPreview && (
                   <div className="mt-1 text-white/70">Body: {debugInfo.bodyPreview}</div>
