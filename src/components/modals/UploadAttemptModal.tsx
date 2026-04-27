@@ -333,7 +333,7 @@ const UploadAttemptModal = ({
     const stream = streamRef.current;
     if (!stream) return;
 
-    const mimeCandidates = ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+    const mimeCandidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
     const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || "";
 
     let recorder: MediaRecorder;
