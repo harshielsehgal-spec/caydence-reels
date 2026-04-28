@@ -421,7 +421,8 @@ const UploadAttemptModal = ({
       // (1) FIRST: capture env + set pending immediately so overlay always shows live state
       const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
       const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
-      const targetUrl = `${BACKEND_BASE}/reels/upload_recorded`;
+      const UPLOAD_URL = "https://caydence-reels-backend.onrender.com/reels/upload_recorded_b64";
+      const targetUrl = UPLOAD_URL;
       setDebugInfo((d) => ({
         ...d,
         targetUrl,
