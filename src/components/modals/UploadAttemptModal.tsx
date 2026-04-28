@@ -458,22 +458,25 @@ const UploadAttemptModal = ({
         pending30 = setTimeout(() => bump("30s"), 30_000);
         pending60 = setTimeout(() => bump("60s"), 60_000);
 
-        const fd = new FormData();
-        const ext = blob.type.includes("mp4") ? "mp4" : "webm";
-        fd.append("file", blob, `attempt.${ext}`);
-        fd.append("reel_id", reel.id);
+        // Convert blob to base64 in chunks (avoids stack overflow on large blobs)
+        const arrayBuffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = "";
+        const CHUNK = 0x8000;
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+          binary += String.fromCharCode.apply(
+            null,
+            bytes.subarray(i, i + CHUNK) as unknown as number[],
+          );
+        }
+        const base64 = btoa(binary);
 
-        const fdEntries: Record<string, string> = {};
-        fd.forEach((value, key) => {
-          fdEntries[key] =
-            value instanceof Blob
-              ? `Blob(size=${value.size}, type=${value.type}, name=${(value as File).name ?? "n/a"})`
-              : String(value);
-        });
         console.log("[upload] sending request", {
           targetUrl,
           reelId: reel.id,
-          formData: fdEntries,
+          mimeType: blob.type,
+          blobSize: blob.size,
+          base64Length: base64.length,
         });
 
         watchdog = setTimeout(() => {
@@ -484,9 +487,14 @@ const UploadAttemptModal = ({
           );
         }, 60_000);
 
-        const res = await fetch(targetUrl, {
+        const res = await fetch(UPLOAD_URL, {
           method: "POST",
-          body: fd,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reel_id: reel.id,
+            video_b64: base64,
+            mime_type: blob.type || "video/webm",
+          }),
           signal: uploadAbortRef.current.signal,
         });
         setDebugInfo((d) => ({ ...d, status: "sent" }));
