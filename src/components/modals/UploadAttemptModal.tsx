@@ -77,7 +77,7 @@ const UploadAttemptModal = ({
   }>({
     blobSize: 0,
     blobType: "",
-    targetUrl: `${BACKEND_BASE}/reels/upload_recorded`,
+    targetUrl: "https://caydence-reels-backend.onrender.com/reels/upload_recorded_b64",
     status: "idle",
   });
 
