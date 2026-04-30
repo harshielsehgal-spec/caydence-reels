@@ -736,6 +736,7 @@ const UploadAttemptModal = ({
                 <div className="font-bold text-white/90 mb-1">DEBUG · upload</div>
                 <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
                 <div>URL: {debugInfo.targetUrl || "—"}</div>
+                <div>Base64: {debugInfo.base64Length === undefined ? "—" : `${debugInfo.base64Length.toLocaleString()} chars`}</div>
                 <div>
                   Online: {debugInfo.online === undefined ? "—" : String(debugInfo.online)} · Proto: {debugInfo.pageProtocol || "—"}
                 </div>
