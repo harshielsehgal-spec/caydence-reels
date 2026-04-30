@@ -74,6 +74,7 @@ const UploadAttemptModal = ({
     online?: boolean;
     pageProtocol?: string;
     pending?: string;
+    base64Length?: number;
   }>({
     blobSize: 0,
     blobType: "",
