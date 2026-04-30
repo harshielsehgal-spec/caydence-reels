@@ -458,18 +458,23 @@ const UploadAttemptModal = ({
         pending30 = setTimeout(() => bump("30s"), 30_000);
         pending60 = setTimeout(() => bump("60s"), 60_000);
 
-        // Convert blob to base64 in chunks (avoids stack overflow on large blobs)
-        const arrayBuffer = await blob.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        let binary = "";
-        const CHUNK = 0x8000;
-        for (let i = 0; i < bytes.length; i += CHUNK) {
-          binary += String.fromCharCode.apply(
-            null,
-            bytes.subarray(i, i + CHUNK) as unknown as number[],
-          );
-        }
-        const base64 = btoa(binary);
+        // Convert blob to base64 via FileReader — iOS Safari's native optimized path.
+        // The chunked String.fromCharCode.apply loop silently hangs the JS engine on iOS Safari
+        // for blobs ~1MB+. FileReader.readAsDataURL is async, non-blocking, and reliable.
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            // result is "data:<mime>;base64,<actual base64>"
+            const comma = result.indexOf(",");
+            resolve(comma >= 0 ? result.slice(comma + 1) : result);
+          };
+          reader.onerror = () => reject(reader.error || new Error("FileReader failed"));
+          reader.readAsDataURL(blob);
+        });
+
+        console.log("[upload] base64 encoded —", { base64Length: base64.length });
+        setDebugInfo((d) => ({ ...d, base64Length: base64.length }));
 
         console.log("[upload] sending request", {
           targetUrl,
