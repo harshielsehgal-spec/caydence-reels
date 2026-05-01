@@ -95,6 +95,7 @@ const UploadAttemptModal = ({
   const recordTickerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
   const uploadAbortRef = useRef<AbortController | null>(null);
+  const lastRecordedBlobRef = useRef<Blob | null>(null);
   const skeletonAbortRef = useRef<AbortController | null>(null);
   const framingRef = useRef<FramingStatus>({ kind: "pending" });
 
@@ -374,6 +375,7 @@ const UploadAttemptModal = ({
         httpStatus: undefined,
         bodyPreview: undefined,
       }));
+      lastRecordedBlobRef.current = blob;
       uploadBlob(blob);
     };
 
@@ -730,6 +732,28 @@ const UploadAttemptModal = ({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="text-base font-semibold text-white">Analyzing your reel…</p>
+
+              {/* DEBUG: manual download fallback for iOS Safari upload failures */}
+              <Button
+                variant="secondary"
+                className="h-10"
+                onClick={() => {
+                  const blob = lastRecordedBlobRef.current;
+                  if (!blob) return;
+                  console.log("[debug] download triggered", { blobSize: blob.size, mimeType: blob.type });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  const ext = (blob.type.includes("mp4") ? "mp4" : "webm");
+                  a.download = `caydence-attempt-${Date.now()}.${ext}`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Download Recording
+              </Button>
 
               {/* DEBUG OVERLAY — temporary, remove after diagnosing upload failures */}
               <div className="absolute top-2 left-2 right-2 z-50 max-w-full rounded-md bg-black/90 p-2 font-mono text-[10px] leading-tight text-white break-all border border-white/20">
