@@ -375,6 +375,7 @@ const UploadAttemptModal = ({
         httpStatus: undefined,
         bodyPreview: undefined,
       }));
+      lastRecordedBlobRef.current = blob;
       uploadBlob(blob);
     };
 
