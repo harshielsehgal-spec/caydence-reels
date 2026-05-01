@@ -95,6 +95,7 @@ const UploadAttemptModal = ({
   const recordTickerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
   const uploadAbortRef = useRef<AbortController | null>(null);
+  const lastRecordedBlobRef = useRef<Blob | null>(null);
   const skeletonAbortRef = useRef<AbortController | null>(null);
   const framingRef = useRef<FramingStatus>({ kind: "pending" });
 
