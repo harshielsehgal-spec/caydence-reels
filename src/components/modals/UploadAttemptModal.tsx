@@ -738,6 +738,7 @@ const UploadAttemptModal = ({
     const isRecording = state.kind === "recording";
     const isCountdown = state.kind === "countdown";
     const isUploading = state.kind === "uploading";
+    const isFailed = state.kind === "failed";
     const isSetup = state.kind === "setup";
 
     const stopEnabled =
