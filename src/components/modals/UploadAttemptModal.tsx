@@ -39,13 +39,17 @@ type ModalState =
   | { kind: "pre-recording" }
   | { kind: "countdown"; value: 3 | 2 | 1 }
   | { kind: "recording"; startedAt: number }
-  | { kind: "uploading" }
+  | { kind: "uploading"; attempt: number }
+  | { kind: "failed"; message: string }
   | { kind: "done" };
 
 const RECORD_MAX_MS = 15_000;
 const MIN_STOP_MS = 2_000;
 const AUTO_HOLD_MS = 3_000;
 const AUTO_HOLD_TICK_MS = 100;
+const UPLOAD_ATTEMPT_TIMEOUT_MS = 90_000;
+const UPLOAD_MAX_ATTEMPTS = 3;
+const UPLOAD_RETRY_BACKOFF_MS = [1500, 4000]; // delay before attempt 2 and 3
 
 const UploadAttemptModal = ({
   isOpen,
