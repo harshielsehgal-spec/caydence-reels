@@ -893,6 +893,30 @@ const UploadAttemptModal = ({
               </div>
             </div>
           )}
+
+          {/* Failed overlay (retries exhausted) */}
+          {isFailed && state.kind === "failed" && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/90 p-6 text-center">
+              <div className="rounded-full bg-red-500/20 p-3">
+                <span className="block text-3xl">⚠️</span>
+              </div>
+              <p className="text-lg font-semibold text-white">Upload failed</p>
+              <p className="max-w-xs text-sm text-white/70">
+                We couldn't get your score after {UPLOAD_MAX_ATTEMPTS} attempts. The scoring server may be waking up — please try again.
+              </p>
+              <p className="max-w-xs break-words text-[11px] text-white/40">
+                {state.message}
+              </p>
+              <div className="flex w-full max-w-xs flex-col gap-2">
+                <Button onClick={retryUpload} className="h-11 w-full">
+                  Try again
+                </Button>
+                <Button variant="secondary" onClick={handleClose} className="h-11 w-full">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action button */}
