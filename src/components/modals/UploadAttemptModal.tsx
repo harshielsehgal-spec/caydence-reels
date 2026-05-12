@@ -621,21 +621,21 @@ const UploadAttemptModal = ({
 
         const result = await runAttempt(attempt);
 
-        if (result.ok) {
+        if (result.ok === true) {
           setState({ kind: "done" });
           onResult?.(reel.id, Math.round(result.score));
           handleClose();
           return;
+        } else {
+          lastError = result.error;
+          console.warn(`[upload] attempt ${attempt} failed:`, result.error?.name, result.error?.message);
+
+          if (!result.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
+
+          const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
+          toast.message(`Upload attempt ${attempt} failed — retrying…`);
+          await sleep(backoff);
         }
-
-        lastError = result.error;
-        console.warn(`[upload] attempt ${attempt} failed:`, result.error?.name, result.error?.message);
-
-        if (!result.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
-
-        const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
-        toast.message(`Upload attempt ${attempt} failed — retrying…`);
-        await sleep(backoff);
       }
 
       // All attempts exhausted
