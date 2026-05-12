@@ -456,7 +456,7 @@ const UploadAttemptModal = ({
         /* ignore */
       }
     }
-    setState({ kind: "uploading" });
+    setState({ kind: "uploading", attempt: 1 });
   }, []);
 
   // ---- Upload ----
