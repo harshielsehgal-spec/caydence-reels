@@ -747,6 +747,25 @@ const UploadAttemptModal = ({
             </div>
           )}
 
+          {/* Alignment status pill */}
+          {!isRecording && !isCountdown && !isUploading && !isSetup && alignment.kind !== "pending" && (
+            <div
+              className={`absolute left-1/2 top-12 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                alignment.kind === "ok"
+                  ? "bg-emerald-500/90 text-white"
+                  : alignment.kind === "rotate"
+                    ? "bg-amber-500/90 text-white"
+                    : "bg-red-500/90 text-white"
+              }`}
+            >
+              {alignment.kind === "ok"
+                ? "Angle ✓"
+                : alignment.kind === "rotate"
+                  ? "Rotate camera"
+                  : "Wrong angle"}
+            </div>
+          )}
+
           {/* Countdown overlay */}
           {isCountdown && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -909,7 +928,7 @@ const UploadAttemptModal = ({
       setAutoHoldMs(0);
     };
 
-    if (state.kind !== "pre-recording" || framing.kind !== "ok") {
+    if (state.kind !== "pre-recording" || framing.kind !== "ok" || alignment.kind !== "ok") {
       cancel();
       return;
     }
@@ -919,7 +938,11 @@ const UploadAttemptModal = ({
 
     const loop = () => {
       // If framing slipped or state changed, abort.
-      if (framingRef.current.kind !== "ok" || autoHoldStartRef.current === null) {
+      if (
+        framingRef.current.kind !== "ok" ||
+        alignmentRef.current.kind !== "ok" ||
+        autoHoldStartRef.current === null
+      ) {
         cancel();
         return;
       }
@@ -941,7 +964,7 @@ const UploadAttemptModal = ({
     autoHoldRafRef.current = requestAnimationFrame(loop);
 
     return cancel;
-  }, [state.kind, framing.kind, beginCountdown]);
+  }, [state.kind, framing.kind, alignment.kind, beginCountdown]);
 
 
   const showFlipButton = isMobile && state.kind === "pre-recording";
