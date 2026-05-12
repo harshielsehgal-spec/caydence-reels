@@ -839,7 +839,14 @@ const UploadAttemptModal = ({
           {isUploading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-base font-semibold text-white">Analyzing your reel…</p>
+              <p className="text-base font-semibold text-white">
+                Analyzing your reel…
+                {state.kind === "uploading" && state.attempt > 1 && (
+                  <span className="ml-2 text-xs font-normal text-white/70">
+                    (retry {state.attempt}/{UPLOAD_MAX_ATTEMPTS})
+                  </span>
+                )}
+              </p>
 
               {/* DEBUG: manual download fallback for iOS Safari upload failures */}
               <Button
