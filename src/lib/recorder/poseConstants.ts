@@ -96,3 +96,28 @@ export function evaluateFraming(landmarks: PoseLandmark[]): FramingStatus {
 
   return { kind: "ok" };
 }
+
+/** Max torso-angle delta (degrees) between user and creator before auto-start is allowed. */
+export const TORSO_ANGLE_TOLERANCE_DEG = 10;
+
+/**
+ * Compute torso orientation in degrees from MediaPipe pose landmarks.
+ * 0° = upright; positive = leaning right, negative = leaning left.
+ * Returns null if required landmarks (11,12,23,24) are missing or low-visibility.
+ */
+export function computeTorsoAngle(landmarks: PoseLandmark[]): number | null {
+  if (!landmarks || landmarks.length < 25) return null;
+  const ls = landmarks[POSE.LEFT_SHOULDER];
+  const rs = landmarks[POSE.RIGHT_SHOULDER];
+  const lh = landmarks[POSE.LEFT_HIP];
+  const rh = landmarks[POSE.RIGHT_HIP];
+  if (!ls || !rs || !lh || !rh) return null;
+  const vis = (p: PoseLandmark) => p.visibility ?? 1;
+  if (vis(ls) < 0.5 || vis(rs) < 0.5 || vis(lh) < 0.5 || vis(rh) < 0.5) return null;
+
+  const shoulderMid = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+  const hipMid = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+  const dx = shoulderMid.x - hipMid.x;
+  const dy = -(shoulderMid.y - hipMid.y);
+  return (Math.atan2(dx, dy) * 180) / Math.PI;
+}

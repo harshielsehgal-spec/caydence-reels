@@ -8,6 +8,8 @@ import { detectMobile } from "@/lib/recorder/isMobile";
 import { fetchReelSkeleton } from "@/lib/recorder/skeletonFetch";
 import {
   evaluateFraming,
+  computeTorsoAngle,
+  TORSO_ANGLE_TOLERANCE_DEG,
   FramingStatus,
   MODEL_URL,
   WASM_BASE_URL,
@@ -62,6 +64,13 @@ const UploadAttemptModal = ({
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [autoHoldMs, setAutoHoldMs] = useState(0); // 0..AUTO_HOLD_MS while holding green
 
+  type AlignmentStatus =
+    | { kind: "pending" }
+    | { kind: "ok"; diff: number }
+    | { kind: "rotate"; diff: number }
+    | { kind: "wrong"; diff: number };
+  const [alignment, setAlignment] = useState<AlignmentStatus>({ kind: "pending" });
+
   // ---- DEBUG OVERLAY STATE (temporary, shown during uploading) ----
   const [debugInfo, setDebugInfo] = useState<{
     blobSize: number;
@@ -98,6 +107,8 @@ const UploadAttemptModal = ({
   const lastRecordedBlobRef = useRef<Blob | null>(null);
   const skeletonAbortRef = useRef<AbortController | null>(null);
   const framingRef = useRef<FramingStatus>({ kind: "pending" });
+  const alignmentRef = useRef<AlignmentStatus>({ kind: "pending" });
+  const creatorAngleRef = useRef<number | null>(null);
 
   const autoHoldRafRef = useRef<number | null>(null);
   const autoHoldStartRef = useRef<number | null>(null);
@@ -106,6 +117,20 @@ const UploadAttemptModal = ({
   useEffect(() => {
     framingRef.current = framing;
   }, [framing]);
+
+  useEffect(() => {
+    alignmentRef.current = alignment;
+  }, [alignment]);
+
+  useEffect(() => {
+    if (!skeleton) {
+      creatorAngleRef.current = null;
+      return;
+    }
+    creatorAngleRef.current = computeTorsoAngle(
+      skeleton.landmarks as unknown as PoseLandmark[],
+    );
+  }, [skeleton]);
 
   /** Hard cleanup of every external resource. Called on close, unmount, errors. */
   const cleanupAll = useCallback(() => {
@@ -168,6 +193,7 @@ const UploadAttemptModal = ({
     setSkeleton(null);
     setRecordSecondsLeft(15);
     setAutoHoldMs(0);
+    setAlignment({ kind: "pending" });
     onClose();
   }, [cleanupAll, onClose]);
 
@@ -296,6 +322,17 @@ const UploadAttemptModal = ({
           lastFramingTickRef.current = now;
           const status = evaluateFraming(lms);
           setFraming(status);
+
+          const creator = creatorAngleRef.current;
+          const user = computeTorsoAngle(lms);
+          if (creator === null || user === null) {
+            setAlignment({ kind: "pending" });
+          } else {
+            const diff = Math.abs(user - creator);
+            if (diff <= TORSO_ANGLE_TOLERANCE_DEG) setAlignment({ kind: "ok", diff });
+            else if (diff < 30) setAlignment({ kind: "rotate", diff });
+            else setAlignment({ kind: "wrong", diff });
+          }
         }
       } catch (err) {
         // Detection errors are non-fatal — keep looping
@@ -710,6 +747,25 @@ const UploadAttemptModal = ({
             </div>
           )}
 
+          {/* Alignment status pill */}
+          {!isRecording && !isCountdown && !isUploading && !isSetup && alignment.kind !== "pending" && (
+            <div
+              className={`absolute left-1/2 top-12 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                alignment.kind === "ok"
+                  ? "bg-emerald-500/90 text-white"
+                  : alignment.kind === "rotate"
+                    ? "bg-amber-500/90 text-white"
+                    : "bg-red-500/90 text-white"
+              }`}
+            >
+              {alignment.kind === "ok"
+                ? "Angle ✓"
+                : alignment.kind === "rotate"
+                  ? "Rotate camera"
+                  : "Wrong angle"}
+            </div>
+          )}
+
           {/* Countdown overlay */}
           {isCountdown && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -872,7 +928,7 @@ const UploadAttemptModal = ({
       setAutoHoldMs(0);
     };
 
-    if (state.kind !== "pre-recording" || framing.kind !== "ok") {
+    if (state.kind !== "pre-recording" || framing.kind !== "ok" || alignment.kind !== "ok") {
       cancel();
       return;
     }
@@ -882,7 +938,11 @@ const UploadAttemptModal = ({
 
     const loop = () => {
       // If framing slipped or state changed, abort.
-      if (framingRef.current.kind !== "ok" || autoHoldStartRef.current === null) {
+      if (
+        framingRef.current.kind !== "ok" ||
+        alignmentRef.current.kind !== "ok" ||
+        autoHoldStartRef.current === null
+      ) {
         cancel();
         return;
       }
@@ -904,7 +964,7 @@ const UploadAttemptModal = ({
     autoHoldRafRef.current = requestAnimationFrame(loop);
 
     return cancel;
-  }, [state.kind, framing.kind, beginCountdown]);
+  }, [state.kind, framing.kind, alignment.kind, beginCountdown]);
 
 
   const showFlipButton = isMobile && state.kind === "pre-recording";
