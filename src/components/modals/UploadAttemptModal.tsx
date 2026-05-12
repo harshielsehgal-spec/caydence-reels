@@ -479,135 +479,182 @@ const UploadAttemptModal = ({
       console.log("[upload] uploadBlob entered", { onlineNow, pageProtocol, targetUrl });
 
       if (!reel) return;
-      let timeout: ReturnType<typeof setTimeout> | null = null;
-      let watchdog: ReturnType<typeof setTimeout> | null = null;
-      let pending5: ReturnType<typeof setTimeout> | null = null;
-      let pending15: ReturnType<typeof setTimeout> | null = null;
-      let pending30: ReturnType<typeof setTimeout> | null = null;
-      let pending60: ReturnType<typeof setTimeout> | null = null;
 
+      // Encode once, reuse across retries
+      let base64: string;
       try {
-        uploadAbortRef.current = new AbortController();
-        timeout = setTimeout(() => uploadAbortRef.current?.abort(), 120_000);
-
-        // (2) Time-bucketed pending markers — only update if still pending
-        const bump = (label: string) =>
-          setDebugInfo((d) =>
-            d.status === "pending"
-              ? { ...d, pending: (d.pending ? d.pending + " · " : "") + label }
-              : d,
-          );
-        pending5 = setTimeout(() => bump("5s"), 5_000);
-        pending15 = setTimeout(() => bump("15s"), 15_000);
-        pending30 = setTimeout(() => bump("30s"), 30_000);
-        pending60 = setTimeout(() => bump("60s"), 60_000);
-
-        // Convert blob to base64 via FileReader — iOS Safari's native optimized path.
-        // The chunked String.fromCharCode.apply loop silently hangs the JS engine on iOS Safari
-        // for blobs ~1MB+. FileReader.readAsDataURL is async, non-blocking, and reliable.
-        const base64 = await new Promise<string>((resolve, reject) => {
+        base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onloadend = () => {
             const result = reader.result as string;
-            // result is "data:<mime>;base64,<actual base64>"
             const comma = result.indexOf(",");
             resolve(comma >= 0 ? result.slice(comma + 1) : result);
           };
           reader.onerror = () => reject(reader.error || new Error("FileReader failed"));
           reader.readAsDataURL(blob);
         });
-
-        console.log("[upload] base64 encoded —", { base64Length: base64.length });
-        setDebugInfo((d) => ({ ...d, base64Length: base64.length }));
-
-        console.log("[upload] sending request", {
-          targetUrl,
-          reelId: reel.id,
-          mimeType: blob.type,
-          blobSize: blob.size,
-          base64Length: base64.length,
-        });
-
-        watchdog = setTimeout(() => {
-          setDebugInfo((d) =>
-            d.status === "pending"
-              ? { ...d, status: "error", error: "Fetch did not return in 60s — likely silently failed" }
-              : d,
-          );
-        }, 60_000);
-
-        const res = await fetch(UPLOAD_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            reel_id: reel.id,
-            video_b64: base64,
-            mime_type: blob.type || "video/webm",
-          }),
-          signal: uploadAbortRef.current.signal,
-        });
-        setDebugInfo((d) => ({ ...d, status: "sent" }));
-
-        const rawBody = await res.text();
-        console.log("[upload] response received", {
-          status: res.status,
-          ok: res.ok,
-          statusText: res.statusText,
-          bodyPreview: rawBody.slice(0, 500),
-          bodyLength: rawBody.length,
-        });
-        setDebugInfo((d) => ({
-          ...d,
-          status: "received",
-          httpStatus: res.status,
-          bodyPreview: rawBody.slice(0, 200),
-        }));
-
-        if (!res.ok) {
-          throw new Error(`Upload failed: ${res.status} ${res.statusText} — ${rawBody.slice(0, 200)}`);
-        }
-
-        let payload: any = null;
-        try {
-          payload = rawBody ? JSON.parse(rawBody) : null;
-        } catch (parseErr) {
-          console.error("[upload] JSON parse failed:", parseErr, "body was:", rawBody);
-          throw new Error(`Bad JSON from server: ${(parseErr as Error).message}`);
-        }
-
-        const score: number =
-          payload?.score ??
-          payload?.overall_score ??
-          payload?.result?.score ??
-          0;
-        console.log("[upload] parsed score:", score, "from payload:", payload);
-
-        setState({ kind: "done" });
-        onResult?.(reel.id, Math.round(score));
-        handleClose();
       } catch (err) {
-        if ((err as any)?.name === "AbortError") {
-          console.error("[upload] aborted:", err);
-        } else {
-          console.error("[upload] failed:", err);
-        }
-        const errorName = (err as Error)?.name || "Error";
-        const errorMessage = (err as Error)?.message || String(err);
-        const msg = `Caught: ${errorName}: ${errorMessage}`;
+        const msg = `Failed to read recording: ${(err as Error)?.message || err}`;
+        console.error("[upload]", msg);
         setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
-        toast.error(msg);
-      } finally {
-        if (timeout) clearTimeout(timeout);
-        if (watchdog) clearTimeout(watchdog);
-        if (pending5) clearTimeout(pending5);
-        if (pending15) clearTimeout(pending15);
-        if (pending30) clearTimeout(pending30);
-        if (pending60) clearTimeout(pending60);
-        uploadAbortRef.current = null;
+        setState({ kind: "failed", message: msg });
+        return;
       }
+
+      console.log("[upload] base64 encoded —", { base64Length: base64.length });
+      setDebugInfo((d) => ({ ...d, base64Length: base64.length }));
+
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+      const runAttempt = async (attemptNum: number): Promise<{ ok: true; score: number } | { ok: false; error: Error; retryable: boolean }> => {
+        let timeout: ReturnType<typeof setTimeout> | null = null;
+        let watchdog: ReturnType<typeof setTimeout> | null = null;
+        let pending5: ReturnType<typeof setTimeout> | null = null;
+        let pending15: ReturnType<typeof setTimeout> | null = null;
+        let pending30: ReturnType<typeof setTimeout> | null = null;
+        let pending60: ReturnType<typeof setTimeout> | null = null;
+
+        try {
+          uploadAbortRef.current = new AbortController();
+          timeout = setTimeout(() => uploadAbortRef.current?.abort(), UPLOAD_ATTEMPT_TIMEOUT_MS);
+
+          const bump = (label: string) =>
+            setDebugInfo((d) =>
+              d.status === "pending"
+                ? { ...d, pending: (d.pending ? d.pending + " · " : "") + label }
+                : d,
+            );
+          pending5 = setTimeout(() => bump("5s"), 5_000);
+          pending15 = setTimeout(() => bump("15s"), 15_000);
+          pending30 = setTimeout(() => bump("30s"), 30_000);
+          pending60 = setTimeout(() => bump("60s"), 60_000);
+
+          watchdog = setTimeout(() => {
+            setDebugInfo((d) =>
+              d.status === "pending"
+                ? { ...d, status: "error", error: `Attempt ${attemptNum}: no response in 60s` }
+                : d,
+            );
+          }, 60_000);
+
+          console.log(`[upload] attempt ${attemptNum} sending request`, {
+            targetUrl,
+            reelId: reel.id,
+            mimeType: blob.type,
+            blobSize: blob.size,
+            base64Length: base64.length,
+          });
+
+          const res = await fetch(UPLOAD_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reel_id: reel.id,
+              video_b64: base64,
+              mime_type: blob.type || "video/webm",
+            }),
+            signal: uploadAbortRef.current.signal,
+          });
+          setDebugInfo((d) => ({ ...d, status: "sent" }));
+
+          const rawBody = await res.text();
+          console.log(`[upload] attempt ${attemptNum} response`, {
+            status: res.status,
+            ok: res.ok,
+            bodyPreview: rawBody.slice(0, 500),
+          });
+          setDebugInfo((d) => ({
+            ...d,
+            status: "received",
+            httpStatus: res.status,
+            bodyPreview: rawBody.slice(0, 200),
+          }));
+
+          if (!res.ok) {
+            // 5xx and 408/429 are retryable; 4xx (other) is not.
+            const retryable = res.status >= 500 || res.status === 408 || res.status === 429;
+            return {
+              ok: false,
+              error: new Error(`Server ${res.status} ${res.statusText} — ${rawBody.slice(0, 200)}`),
+              retryable,
+            };
+          }
+
+          let payload: any = null;
+          try {
+            payload = rawBody ? JSON.parse(rawBody) : null;
+          } catch (parseErr) {
+            return {
+              ok: false,
+              error: new Error(`Bad JSON from server: ${(parseErr as Error).message}`),
+              retryable: false,
+            };
+          }
+
+          const score: number =
+            payload?.score ??
+            payload?.overall_score ??
+            payload?.result?.score ??
+            0;
+          console.log("[upload] parsed score:", score, "from payload:", payload);
+          return { ok: true, score };
+        } catch (err) {
+          const e = err as Error;
+          // AbortError (timeout) and TypeError (network) are retryable
+          const retryable = e?.name === "AbortError" || e?.name === "TypeError";
+          return { ok: false, error: e, retryable };
+        } finally {
+          if (timeout) clearTimeout(timeout);
+          if (watchdog) clearTimeout(watchdog);
+          if (pending5) clearTimeout(pending5);
+          if (pending15) clearTimeout(pending15);
+          if (pending30) clearTimeout(pending30);
+          if (pending60) clearTimeout(pending60);
+          uploadAbortRef.current = null;
+        }
+      };
+
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
+        setState({ kind: "uploading", attempt });
+        setDebugInfo((d) => ({ ...d, status: "pending", pending: undefined, error: undefined }));
+
+        const result = await runAttempt(attempt);
+
+        if (result.ok) {
+          setState({ kind: "done" });
+          onResult?.(reel.id, Math.round(result.score));
+          handleClose();
+          return;
+        }
+
+        lastError = result.error;
+        console.warn(`[upload] attempt ${attempt} failed:`, result.error?.name, result.error?.message);
+
+        if (!result.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
+
+        const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
+        toast.message(`Upload attempt ${attempt} failed — retrying…`);
+        await sleep(backoff);
+      }
+
+      // All attempts exhausted
+      const msg = lastError?.message || "Upload failed after multiple attempts";
+      console.error("[upload] all attempts failed:", msg);
+      setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
+      setState({ kind: "failed", message: msg });
     },
     [reel, onResult, handleClose],
   );
+
+  const retryUpload = useCallback(() => {
+    const blob = lastRecordedBlobRef.current;
+    if (!blob) {
+      toast.error("No recording available to retry");
+      return;
+    }
+    void uploadBlob(blob);
+  }, [uploadBlob]);
 
   // ---- Lifecycle ----
   useEffect(() => {
