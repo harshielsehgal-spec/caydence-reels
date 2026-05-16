@@ -124,6 +124,11 @@ const UploadAttemptModal = ({
   const framingRef = useRef<FramingStatus>({ kind: "pending" });
   const alignmentRef = useRef<AlignmentStatus>({ kind: "pending" });
   const creatorAngleRef = useRef<number | null>(null);
+  // Mirror of the `reel` prop. beginRecording/recorder.onstop close over the
+  // first-render uploadBlob (because beginRecording has empty deps), so reading
+  // `reel` from closure can be stale (null) at recording-stop time. Always read
+  // reelRef.current inside uploadBlob to sidestep the stale closure.
+  const reelRef = useRef<Reel | null>(null);
 
   const autoHoldRafRef = useRef<number | null>(null);
   const autoHoldStartRef = useRef<number | null>(null);
@@ -136,6 +141,10 @@ const UploadAttemptModal = ({
   useEffect(() => {
     alignmentRef.current = alignment;
   }, [alignment]);
+
+  useEffect(() => {
+    reelRef.current = reel;
+  }, [reel]);
 
   useEffect(() => {
     if (!skeleton) {
@@ -490,9 +499,12 @@ const UploadAttemptModal = ({
   // ---- Upload ----
   const uploadBlob = useCallback(
     async (blob: Blob) => {
-      console.log("[upload] STEP 1: uploadBlob called", { reel: !!reel, blobSize: blob.size, blobType: blob.type });
+      // Read reel via ref to avoid stale-closure bug: beginRecording (empty deps)
+      // captures the first-render uploadBlob whose closed-over `reel` is null.
+      const currentReel = reelRef.current;
+      console.log("[upload] STEP 1: uploadBlob called", { reel: !!currentReel, blobSize: blob.size, blobType: blob.type });
       try {
-      if (!reel) return;
+      if (!currentReel) return;
 
       const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
       const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
@@ -553,17 +565,17 @@ const UploadAttemptModal = ({
           uploadAbortRef.current = new AbortController();
           timeout = setTimeout(() => uploadAbortRef.current?.abort(), UPLOAD_ATTEMPT_TIMEOUT_MS);
           console.log(`[upload] submit attempt ${attemptNum}`, {
-            url: ANALYZE_URL, reelId: reel.id, athleteId, sport: reel.sport,
+            url: ANALYZE_URL, reelId: currentReel.id, athleteId, sport: currentReel.sport,
           });
 
           const res = await fetch(ANALYZE_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              reel_id: reel.id,
+              reel_id: currentReel.id,
               attempt_video_url: storageUrl,
               athlete_id: athleteId,
-              sport: reel.sport,
+              sport: currentReel.sport,
             }),
             signal: uploadAbortRef.current.signal,
           });
@@ -673,7 +685,7 @@ const UploadAttemptModal = ({
             console.log("[upload] complete — score:", score, payload?.result);
             setDebugInfo((d) => ({ ...d, uploadStatus: "complete" }));
             setState({ kind: "done" });
-            onResult?.(reel.id, Math.round(score));
+            onResult?.(currentReel.id, Math.round(score));
             handleClose();
             return;
           }
@@ -701,7 +713,7 @@ const UploadAttemptModal = ({
         throw err;
       }
     },
-    [reel, athleteId, onResult, handleClose],
+    [athleteId, onResult, handleClose],
   );
 
   const retryUpload = useCallback(() => {
