@@ -483,14 +483,8 @@ const UploadAttemptModal = ({
       // Encode once, reuse across retries
       let base64: string;
       try {
-        const buffer = await blob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        const chunkSize = 8192;
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-        }
-        base64 = btoa(binary);
+        base64 = await blobToBase64Async(blob);
+        setDebugInfo((d) => ({ ...d, base64Length: base64.length }));
       } catch (err) {
         const msg = `Failed to read recording: ${(err as Error)?.message || err}`;
         console.error("[upload]", msg);
