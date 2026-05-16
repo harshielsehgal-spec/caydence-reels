@@ -24,6 +24,21 @@ import type {
 
 const BACKEND_BASE = "https://caydence-reels-backend.onrender.com";
 
+async function blobToBase64Async(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 32768;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, Array.from(chunk));
+    if (i % (chunkSize * 10) === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+  return btoa(binary);
+}
+
 interface UploadAttemptModalProps {
   isOpen: boolean;
   onClose: () => void;
