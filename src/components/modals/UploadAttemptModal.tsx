@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Camera, Loader2, AlertCircle, Square, Smartphone, SwitchCamera } from "lucide-react";
 import { Reel } from "@/lib/reels";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { detectMobile } from "@/lib/recorder/isMobile";
 import { fetchReelSkeleton } from "@/lib/recorder/skeletonFetch";
 import {
@@ -23,20 +24,13 @@ import type {
 } from "@mediapipe/tasks-vision";
 
 const BACKEND_BASE = "https://caydence-reels-backend.onrender.com";
+const STORAGE_BUCKET = "reel_attempts";
 
-async function blobToBase64Async(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 32768;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
-    if (i % (chunkSize * 10) === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-  }
-  return btoa(binary);
+function isIOSLike(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /iPad|iPhone|iPod/.test(ua) ||
+    (ua.includes("Mac") && typeof document !== "undefined" && "ontouchend" in document);
 }
 
 interface UploadAttemptModalProps {
@@ -94,20 +88,22 @@ const UploadAttemptModal = ({
   const [debugInfo, setDebugInfo] = useState<{
     blobSize: number;
     blobType: string;
-    targetUrl: string;
-    status: "idle" | "pending" | "sent" | "received" | "error";
+    storagePath?: string;
+    storageUrl?: string;
+    jobId?: string;
+    uploadStatus: "idle" | "uploading-storage" | "submitting-job" | "polling" | "complete" | "error";
+    pollAttempt?: number;
+    pollStatus?: string;
     httpStatus?: number;
     error?: string;
     bodyPreview?: string;
     online?: boolean;
     pageProtocol?: string;
     pending?: string;
-    base64Length?: number;
   }>({
     blobSize: 0,
     blobType: "",
-    targetUrl: "https://caydence-reels-backend.onrender.com/reels/upload_recorded_b64",
-    status: "idle",
+    uploadStatus: "idle",
   });
 
   // Refs for resources that must not trigger re-renders
@@ -391,7 +387,11 @@ const UploadAttemptModal = ({
     const stream = streamRef.current;
     if (!stream) return;
 
-    const mimeCandidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
+    // iOS Safari only supports video/mp4 for MediaRecorder; everywhere else,
+    // webm/vp9 is smaller and equally well-supported by ffmpeg downstream.
+    const mimeCandidates = isIOSLike()
+      ? ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+      : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
     const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || "";
 
     let recorder: MediaRecorder;
@@ -413,8 +413,10 @@ const UploadAttemptModal = ({
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
+      // If isTypeSupported rejected everything on iOS, mimeType is empty —
+      // iOS MediaRecorder produces mp4 in that case, so default to mp4 there.
       const blob = new Blob(recordChunksRef.current, {
-        type: mimeType || "video/webm",
+        type: mimeType || (isIOSLike() ? "video/mp4" : "video/webm"),
       });
       console.log("[upload] recording stopped", {
         blobSize: blob.size,
@@ -426,7 +428,7 @@ const UploadAttemptModal = ({
         ...d,
         blobSize: blob.size,
         blobType: blob.type,
-        status: "pending",
+        uploadStatus: "uploading-storage",
         error: undefined,
         httpStatus: undefined,
         bodyPreview: undefined,
@@ -437,7 +439,8 @@ const UploadAttemptModal = ({
 
     recorderRef.current = recorder;
     const startedAt = performance.now();
-    recorder.start();
+    // iOS Safari is unreliable without a timeslice — chunks may not flush before onstop.
+    recorder.start(1000);
     setState({ kind: "recording", startedAt });
     setRecordSecondsLeft(15);
 
@@ -477,108 +480,82 @@ const UploadAttemptModal = ({
   // ---- Upload ----
   const uploadBlob = useCallback(
     async (blob: Blob) => {
-      // (1) FIRST: capture env + set pending immediately so overlay always shows live state
+      if (!reel) return;
+
       const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
       const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
-      const UPLOAD_URL = "https://caydence-reels-backend.onrender.com/reels/upload_recorded_b64";
-      const targetUrl = UPLOAD_URL;
       setDebugInfo((d) => ({
         ...d,
-        targetUrl,
-        status: "pending",
+        uploadStatus: "uploading-storage",
         error: undefined,
         pending: undefined,
         online: onlineNow,
         pageProtocol,
       }));
-      console.log("[upload] uploadBlob entered", { onlineNow, pageProtocol, targetUrl });
+      console.log("[upload] uploadBlob entered", {
+        onlineNow, pageProtocol, blobSize: blob.size, blobType: blob.type,
+      });
 
-      if (!reel) return;
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-      // Encode once, reuse across retries
-      let base64: string;
+      // (a) Upload to Supabase storage — direct binary, not base64.
+      const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+      const storagePath = `${crypto.randomUUID()}.${ext}`;
+      const contentType = blob.type || (ext === "mp4" ? "video/mp4" : "video/webm");
+
+      let storageUrl: string;
       try {
-        base64 = await blobToBase64Async(blob);
-        setDebugInfo((d) => ({ ...d, base64Length: base64.length }));
+        const { error: uploadErr } = await supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .upload(storagePath, blob, { contentType, upsert: false });
+        if (uploadErr) throw uploadErr;
+        const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
+        storageUrl = pub.publicUrl;
+        console.log("[upload] storage upload ok", { storagePath, storageUrl, contentType });
+        setDebugInfo((d) => ({ ...d, storagePath, storageUrl }));
       } catch (err) {
-        const msg = `Failed to read recording: ${(err as Error)?.message || err}`;
+        const msg = `Storage upload failed: ${(err as Error)?.message || err}`;
         console.error("[upload]", msg);
-        setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
+        setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
         setState({ kind: "failed", message: msg });
         return;
       }
 
-      console.log("[upload] base64 encoded —", { base64Length: base64.length });
-      setDebugInfo((d) => ({ ...d, base64Length: base64.length }));
+      // (b) Submit job to /reels/analyze (retry on transient failures).
+      const ANALYZE_URL = `${BACKEND_BASE}/reels/analyze`;
 
-      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-      const runAttempt = async (attemptNum: number): Promise<{ ok: true; score: number } | { ok: false; error: Error; retryable: boolean }> => {
+      const submitJob = async (
+        attemptNum: number,
+      ): Promise<
+        { ok: true; jobId: string } | { ok: false; error: Error; retryable: boolean }
+      > => {
         let timeout: ReturnType<typeof setTimeout> | null = null;
-        let watchdog: ReturnType<typeof setTimeout> | null = null;
-        let pending5: ReturnType<typeof setTimeout> | null = null;
-        let pending15: ReturnType<typeof setTimeout> | null = null;
-        let pending30: ReturnType<typeof setTimeout> | null = null;
-        let pending60: ReturnType<typeof setTimeout> | null = null;
-
         try {
           uploadAbortRef.current = new AbortController();
           timeout = setTimeout(() => uploadAbortRef.current?.abort(), UPLOAD_ATTEMPT_TIMEOUT_MS);
-
-          const bump = (label: string) =>
-            setDebugInfo((d) =>
-              d.status === "pending"
-                ? { ...d, pending: (d.pending ? d.pending + " · " : "") + label }
-                : d,
-            );
-          pending5 = setTimeout(() => bump("5s"), 5_000);
-          pending15 = setTimeout(() => bump("15s"), 15_000);
-          pending30 = setTimeout(() => bump("30s"), 30_000);
-          pending60 = setTimeout(() => bump("60s"), 60_000);
-
-          watchdog = setTimeout(() => {
-            setDebugInfo((d) =>
-              d.status === "pending"
-                ? { ...d, status: "error", error: `Attempt ${attemptNum}: no response in 60s` }
-                : d,
-            );
-          }, 60_000);
-
-          console.log(`[upload] attempt ${attemptNum} sending request`, {
-            targetUrl,
-            reelId: reel.id,
-            mimeType: blob.type,
-            blobSize: blob.size,
-            base64Length: base64.length,
+          console.log(`[upload] submit attempt ${attemptNum}`, {
+            url: ANALYZE_URL, reelId: reel.id, athleteId, sport: reel.sport,
           });
 
-          const res = await fetch(UPLOAD_URL, {
+          const res = await fetch(ANALYZE_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               reel_id: reel.id,
-              video_b64: base64,
-              mime_type: blob.type || "video/webm",
+              attempt_video_url: storageUrl,
+              athlete_id: athleteId,
+              sport: reel.sport,
             }),
             signal: uploadAbortRef.current.signal,
           });
-          setDebugInfo((d) => ({ ...d, status: "sent" }));
-
           const rawBody = await res.text();
-          console.log(`[upload] attempt ${attemptNum} response`, {
-            status: res.status,
-            ok: res.ok,
-            bodyPreview: rawBody.slice(0, 500),
+          console.log(`[upload] submit attempt ${attemptNum} response`, {
+            status: res.status, ok: res.ok, bodyPreview: rawBody.slice(0, 300),
           });
-          setDebugInfo((d) => ({
-            ...d,
-            status: "received",
-            httpStatus: res.status,
-            bodyPreview: rawBody.slice(0, 200),
-          }));
+          setDebugInfo((d) => ({ ...d, httpStatus: res.status, bodyPreview: rawBody.slice(0, 200) }));
 
           if (!res.ok) {
-            // 5xx and 408/429 are retryable; 4xx (other) is not.
             const retryable = res.status >= 500 || res.status === 408 || res.status === 429;
             return {
               ok: false,
@@ -586,72 +563,123 @@ const UploadAttemptModal = ({
               retryable,
             };
           }
-
           let payload: any = null;
           try {
             payload = rawBody ? JSON.parse(rawBody) : null;
           } catch (parseErr) {
             return {
               ok: false,
-              error: new Error(`Bad JSON from server: ${(parseErr as Error).message}`),
+              error: new Error(`Bad JSON from /analyze: ${(parseErr as Error).message}`),
               retryable: false,
             };
           }
-
-          const score: number =
-            payload?.score ??
-            payload?.overall_score ??
-            payload?.result?.score ??
-            0;
-          console.log("[upload] parsed score:", score, "from payload:", payload);
-          return { ok: true, score };
+          const jobId = payload?.job_id;
+          if (!jobId || typeof jobId !== "string") {
+            return {
+              ok: false,
+              error: new Error(`No job_id in /analyze response: ${rawBody.slice(0, 200)}`),
+              retryable: false,
+            };
+          }
+          return { ok: true, jobId };
         } catch (err) {
           const e = err as Error;
-          // AbortError (timeout) and TypeError (network) are retryable
           const retryable = e?.name === "AbortError" || e?.name === "TypeError";
           return { ok: false, error: e, retryable };
         } finally {
           if (timeout) clearTimeout(timeout);
-          if (watchdog) clearTimeout(watchdog);
-          if (pending5) clearTimeout(pending5);
-          if (pending15) clearTimeout(pending15);
-          if (pending30) clearTimeout(pending30);
-          if (pending60) clearTimeout(pending60);
           uploadAbortRef.current = null;
         }
       };
 
+      let jobId: string | null = null;
       let lastError: Error | null = null;
       for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
         setState({ kind: "uploading", attempt });
-        setDebugInfo((d) => ({ ...d, status: "pending", pending: undefined, error: undefined }));
-
-        const result = await runAttempt(attempt);
-
-        if (result.ok === true) {
-          setState({ kind: "done" });
-          onResult?.(reel.id, Math.round(result.score));
-          handleClose();
-          return;
-        } else {
-          lastError = result.error;
-          console.warn(`[upload] attempt ${attempt} failed:`, result.error?.name, result.error?.message);
-
-          if (!result.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
-
-          const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
-          toast.message(`Upload attempt ${attempt} failed — retrying…`);
-          await sleep(backoff);
+        setDebugInfo((d) => ({
+          ...d,
+          uploadStatus: "submitting-job",
+          error: undefined,
+          pending: undefined,
+        }));
+        const r = await submitJob(attempt);
+        if (r.ok) {
+          jobId = r.jobId;
+          setDebugInfo((d) => ({ ...d, jobId: r.jobId }));
+          break;
         }
+        lastError = r.error;
+        console.warn(`[upload] submit attempt ${attempt} failed:`, r.error?.name, r.error?.message);
+        if (!r.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
+        const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
+        toast.message(`Upload attempt ${attempt} failed — retrying…`);
+        await sleep(backoff);
+      }
+      if (!jobId) {
+        const msg = lastError?.message || "Could not submit job to /reels/analyze";
+        setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
+        setState({ kind: "failed", message: msg });
+        return;
       }
 
-      // All attempts exhausted
-      const msg = lastError?.message || "Upload failed after multiple attempts";
-      console.error("[upload] all attempts failed:", msg);
-      setDebugInfo((d) => ({ ...d, status: "error", error: msg }));
+      // (c) Poll /reels/result/{job_id} until terminal status or budget exhausts.
+      setDebugInfo((d) => ({ ...d, uploadStatus: "polling", pollAttempt: 0 }));
+      const POLL_INTERVAL_MS = 1500;
+      const POLL_BUDGET_MS = 90_000;
+      const POLL_FETCH_TIMEOUT_MS = 10_000;
+      const RESULT_URL = `${BACKEND_BASE}/reels/result/${encodeURIComponent(jobId)}`;
+      const deadline = performance.now() + POLL_BUDGET_MS;
+      let pollAttempt = 0;
+      while (performance.now() < deadline) {
+        pollAttempt += 1;
+        // Per-poll 10s timeout so one hung request can't eat the whole budget.
+        const pollCtl = new AbortController();
+        const pollTimeout = setTimeout(() => pollCtl.abort(), POLL_FETCH_TIMEOUT_MS);
+        try {
+          const res = await fetch(RESULT_URL, { signal: pollCtl.signal });
+          const rawBody = await res.text();
+          let payload: any = null;
+          try {
+            payload = rawBody ? JSON.parse(rawBody) : null;
+          } catch {
+            /* tolerate one bad parse — keep polling */
+          }
+          const pollStatus: string | undefined = payload?.status;
+          console.log(`[upload] poll #${pollAttempt}`, {
+            httpStatus: res.status, pollStatus, error: payload?.error,
+          });
+          setDebugInfo((d) => ({ ...d, pollAttempt, pollStatus, httpStatus: res.status }));
+
+          if (pollStatus === "complete") {
+            const score: number = payload?.result?.score ?? 0;
+            console.log("[upload] complete — score:", score, payload?.result);
+            setDebugInfo((d) => ({ ...d, uploadStatus: "complete" }));
+            setState({ kind: "done" });
+            onResult?.(reel.id, Math.round(score));
+            handleClose();
+            return;
+          }
+          if (pollStatus === "failed") {
+            const msg = payload?.error || "Scoring failed";
+            setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
+            setState({ kind: "failed", message: msg });
+            return;
+          }
+        } catch (err) {
+          const e = err as Error;
+          console.warn(`[upload] poll #${pollAttempt} fetch error:`, e?.name, e?.message);
+        } finally {
+          clearTimeout(pollTimeout);
+        }
+        await sleep(POLL_INTERVAL_MS);
+      }
+
+      const msg = `Timed out waiting for score after ${Math.round(POLL_BUDGET_MS / 1000)}s (job ${jobId})`;
+      console.error("[upload]", msg);
+      setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
       setState({ kind: "failed", message: msg });
     },
-    [reel, onResult, handleClose],
+    [reel, athleteId, onResult, handleClose],
   );
 
   const retryUpload = useCallback(() => {
@@ -881,14 +909,18 @@ const UploadAttemptModal = ({
               <div className="absolute top-2 left-2 right-2 z-50 max-w-full rounded-md bg-black/90 p-2 font-mono text-[10px] leading-tight text-white break-all border border-white/20">
                 <div className="font-bold text-white/90 mb-1">DEBUG · upload</div>
                 <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
-                <div>URL: {debugInfo.targetUrl || "—"}</div>
-                <div>Base64: {debugInfo.base64Length === undefined ? "—" : `${debugInfo.base64Length.toLocaleString()} chars`}</div>
+                <div>
+                  Stage: {debugInfo.uploadStatus}
+                  {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
+                </div>
+                {debugInfo.storagePath && <div>Storage: {debugInfo.storagePath}</div>}
+                {debugInfo.storageUrl && <div className="text-white/70">URL: {debugInfo.storageUrl}</div>}
+                {debugInfo.jobId && <div>Job: {debugInfo.jobId}</div>}
+                {debugInfo.pollAttempt !== undefined && debugInfo.pollAttempt > 0 && (
+                  <div>Poll #{debugInfo.pollAttempt}: {debugInfo.pollStatus || "—"}</div>
+                )}
                 <div>
                   Online: {debugInfo.online === undefined ? "—" : String(debugInfo.online)} · Proto: {debugInfo.pageProtocol || "—"}
-                </div>
-                <div>
-                  Status: {debugInfo.status}
-                  {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
                 </div>
                 {debugInfo.pending && (
                   <div className="text-yellow-300">Pending: {debugInfo.pending}</div>
