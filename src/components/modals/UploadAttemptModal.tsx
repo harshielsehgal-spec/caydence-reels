@@ -413,28 +413,38 @@ const UploadAttemptModal = ({
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
-      // If isTypeSupported rejected everything on iOS, mimeType is empty —
-      // iOS MediaRecorder produces mp4 in that case, so default to mp4 there.
-      const blob = new Blob(recordChunksRef.current, {
-        type: mimeType || (isIOSLike() ? "video/mp4" : "video/webm"),
-      });
-      console.log("[upload] recording stopped", {
-        blobSize: blob.size,
-        blobSizeKB: (blob.size / 1024).toFixed(1) + " KB",
-        mimeType: blob.type,
-        chunkCount: recordChunksRef.current.length,
-      });
-      setDebugInfo((d) => ({
-        ...d,
-        blobSize: blob.size,
-        blobType: blob.type,
-        uploadStatus: "uploading-storage",
-        error: undefined,
-        httpStatus: undefined,
-        bodyPreview: undefined,
-      }));
-      lastRecordedBlobRef.current = blob;
-      uploadBlob(blob);
+      try {
+        // If isTypeSupported rejected everything on iOS, mimeType is empty —
+        // iOS MediaRecorder produces mp4 in that case, so default to mp4 there.
+        const blob = new Blob(recordChunksRef.current, {
+          type: mimeType || (isIOSLike() ? "video/mp4" : "video/webm"),
+        });
+        console.log("[upload] recording stopped", {
+          blobSize: blob.size,
+          blobSizeKB: (blob.size / 1024).toFixed(1) + " KB",
+          mimeType: blob.type,
+          chunkCount: recordChunksRef.current.length,
+        });
+        console.log("[upload] PRE-SET-DEBUG");
+        setDebugInfo((d) => ({
+          ...d,
+          blobSize: blob.size,
+          blobType: blob.type,
+          uploadStatus: "uploading-storage",
+          error: undefined,
+          httpStatus: undefined,
+          bodyPreview: undefined,
+        }));
+        console.log("[upload] POST-SET-DEBUG");
+        console.log("[upload] PRE-REF-ASSIGN");
+        lastRecordedBlobRef.current = blob;
+        console.log("[upload] POST-REF-ASSIGN");
+        console.log("[upload] PRE-CALL-UPLOAD", { uploadBlobIsFn: typeof uploadBlob });
+        uploadBlob(blob);
+        console.log("[upload] POST-CALL-UPLOAD");
+      } catch (err) {
+        console.error("[upload] ONSTOP CRASH:", err);
+      }
     };
 
     recorderRef.current = recorder;
