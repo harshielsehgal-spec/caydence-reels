@@ -84,28 +84,6 @@ const UploadAttemptModal = ({
     | { kind: "wrong"; diff: number };
   const [alignment, setAlignment] = useState<AlignmentStatus>({ kind: "pending" });
 
-  // ---- DEBUG OVERLAY STATE (temporary, shown during uploading) ----
-  const [debugInfo, setDebugInfo] = useState<{
-    blobSize: number;
-    blobType: string;
-    storagePath?: string;
-    storageUrl?: string;
-    jobId?: string;
-    uploadStatus: "idle" | "uploading-storage" | "submitting-job" | "polling" | "complete" | "error";
-    pollAttempt?: number;
-    pollStatus?: string;
-    httpStatus?: number;
-    error?: string;
-    bodyPreview?: string;
-    online?: boolean;
-    pageProtocol?: string;
-    pending?: string;
-  }>({
-    blobSize: 0,
-    blobType: "",
-    uploadStatus: "idle",
-  });
-
   // Refs for resources that must not trigger re-renders
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -422,38 +400,13 @@ const UploadAttemptModal = ({
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
-      try {
-        // If isTypeSupported rejected everything on iOS, mimeType is empty —
-        // iOS MediaRecorder produces mp4 in that case, so default to mp4 there.
-        const blob = new Blob(recordChunksRef.current, {
-          type: mimeType || (isIOSLike() ? "video/mp4" : "video/webm"),
-        });
-        console.log("[upload] recording stopped", {
-          blobSize: blob.size,
-          blobSizeKB: (blob.size / 1024).toFixed(1) + " KB",
-          mimeType: blob.type,
-          chunkCount: recordChunksRef.current.length,
-        });
-        console.log("[upload] PRE-SET-DEBUG");
-        setDebugInfo((d) => ({
-          ...d,
-          blobSize: blob.size,
-          blobType: blob.type,
-          uploadStatus: "uploading-storage",
-          error: undefined,
-          httpStatus: undefined,
-          bodyPreview: undefined,
-        }));
-        console.log("[upload] POST-SET-DEBUG");
-        console.log("[upload] PRE-REF-ASSIGN");
-        lastRecordedBlobRef.current = blob;
-        console.log("[upload] POST-REF-ASSIGN");
-        console.log("[upload] PRE-CALL-UPLOAD", { uploadBlobIsFn: typeof uploadBlob });
-        uploadBlob(blob);
-        console.log("[upload] POST-CALL-UPLOAD");
-      } catch (err) {
-        console.error("[upload] ONSTOP CRASH:", err);
-      }
+      // If isTypeSupported rejected everything on iOS, mimeType is empty —
+      // iOS MediaRecorder produces mp4 in that case, so default to mp4 there.
+      const blob = new Blob(recordChunksRef.current, {
+        type: mimeType || (isIOSLike() ? "video/mp4" : "video/webm"),
+      });
+      lastRecordedBlobRef.current = blob;
+      uploadBlob(blob);
     };
 
     recorderRef.current = recorder;
@@ -502,52 +455,27 @@ const UploadAttemptModal = ({
       // Read reel via ref to avoid stale-closure bug: beginRecording (empty deps)
       // captures the first-render uploadBlob whose closed-over `reel` is null.
       const currentReel = reelRef.current;
-      console.log("[upload] STEP 1: uploadBlob called", { reel: !!currentReel, blobSize: blob.size, blobType: blob.type });
-      try {
       if (!currentReel) return;
-
-      const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
-      const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
-      console.log("[upload] STEP 2: about to setDebugInfo");
-      setDebugInfo((d) => ({
-        ...d,
-        uploadStatus: "uploading-storage",
-        error: undefined,
-        pending: undefined,
-        online: onlineNow,
-        pageProtocol,
-      }));
-      console.log("[upload] STEP 3: setDebugInfo done");
-      console.log("[upload] uploadBlob entered", {
-        onlineNow, pageProtocol, blobSize: blob.size, blobType: blob.type,
-      });
 
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
       // (a) Upload to Supabase storage — direct binary, not base64.
-      console.log("[upload] STEP 4: generating UUID and path");
       const ext = blob.type.includes("mp4") ? "mp4" : "webm";
       const storagePath = `${crypto.randomUUID()}.${ext}`;
       const contentType = blob.type || (ext === "mp4" ? "video/mp4" : "video/webm");
-      console.log("[upload] STEP 5: path generated", { storagePath, contentType, ext });
 
       let storageUrl: string;
       try {
-        console.log("[upload] STEP 6: calling supabase.storage.upload");
         const { error: uploadErr } = await supabase
           .storage
           .from(STORAGE_BUCKET)
           .upload(storagePath, blob, { contentType, upsert: false });
-        console.log("[upload] STEP 7: supabase upload returned", { uploadErr });
         if (uploadErr) throw uploadErr;
         const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
         storageUrl = pub.publicUrl;
-        console.log("[upload] storage upload ok", { storagePath, storageUrl, contentType });
-        setDebugInfo((d) => ({ ...d, storagePath, storageUrl }));
       } catch (err) {
         const msg = `Storage upload failed: ${(err as Error)?.message || err}`;
         console.error("[upload]", msg);
-        setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
         setState({ kind: "failed", message: msg });
         return;
       }
@@ -555,18 +483,13 @@ const UploadAttemptModal = ({
       // (b) Submit job to /reels/analyze (retry on transient failures).
       const ANALYZE_URL = `${BACKEND_BASE}/reels/analyze`;
 
-      const submitJob = async (
-        attemptNum: number,
-      ): Promise<
+      const submitJob = async (): Promise<
         { ok: true; jobId: string } | { ok: false; error: Error; retryable: boolean }
       > => {
         let timeout: ReturnType<typeof setTimeout> | null = null;
         try {
           uploadAbortRef.current = new AbortController();
           timeout = setTimeout(() => uploadAbortRef.current?.abort(), UPLOAD_ATTEMPT_TIMEOUT_MS);
-          console.log(`[upload] submit attempt ${attemptNum}`, {
-            url: ANALYZE_URL, reelId: currentReel.id, athleteId, sport: currentReel.sport,
-          });
 
           const res = await fetch(ANALYZE_URL, {
             method: "POST",
@@ -580,10 +503,6 @@ const UploadAttemptModal = ({
             signal: uploadAbortRef.current.signal,
           });
           const rawBody = await res.text();
-          console.log(`[upload] submit attempt ${attemptNum} response`, {
-            status: res.status, ok: res.ok, bodyPreview: rawBody.slice(0, 300),
-          });
-          setDebugInfo((d) => ({ ...d, httpStatus: res.status, bodyPreview: rawBody.slice(0, 200) }));
 
           if (!res.ok) {
             const retryable = res.status >= 500 || res.status === 408 || res.status === 429;
@@ -626,20 +545,12 @@ const UploadAttemptModal = ({
       let lastError: Error | null = null;
       for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
         setState({ kind: "uploading", attempt });
-        setDebugInfo((d) => ({
-          ...d,
-          uploadStatus: "submitting-job",
-          error: undefined,
-          pending: undefined,
-        }));
-        const r = await submitJob(attempt);
+        const r = await submitJob();
         if (r.ok) {
           jobId = r.jobId;
-          setDebugInfo((d) => ({ ...d, jobId: r.jobId }));
           break;
         }
         lastError = r.error;
-        console.warn(`[upload] submit attempt ${attempt} failed:`, r.error?.name, r.error?.message);
         if (!r.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
         const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
         toast.message(`Upload attempt ${attempt} failed — retrying…`);
@@ -647,21 +558,17 @@ const UploadAttemptModal = ({
       }
       if (!jobId) {
         const msg = lastError?.message || "Could not submit job to /reels/analyze";
-        setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
         setState({ kind: "failed", message: msg });
         return;
       }
 
       // (c) Poll /reels/result/{job_id} until terminal status or budget exhausts.
-      setDebugInfo((d) => ({ ...d, uploadStatus: "polling", pollAttempt: 0 }));
       const POLL_INTERVAL_MS = 1500;
       const POLL_BUDGET_MS = 90_000;
       const POLL_FETCH_TIMEOUT_MS = 10_000;
       const RESULT_URL = `${BACKEND_BASE}/reels/result/${encodeURIComponent(jobId)}`;
       const deadline = performance.now() + POLL_BUDGET_MS;
-      let pollAttempt = 0;
       while (performance.now() < deadline) {
-        pollAttempt += 1;
         // Per-poll 10s timeout so one hung request can't eat the whole budget.
         const pollCtl = new AbortController();
         const pollTimeout = setTimeout(() => pollCtl.abort(), POLL_FETCH_TIMEOUT_MS);
@@ -675,15 +582,9 @@ const UploadAttemptModal = ({
             /* tolerate one bad parse — keep polling */
           }
           const pollStatus: string | undefined = payload?.status;
-          console.log(`[upload] poll #${pollAttempt}`, {
-            httpStatus: res.status, pollStatus, error: payload?.error,
-          });
-          setDebugInfo((d) => ({ ...d, pollAttempt, pollStatus, httpStatus: res.status }));
 
           if (pollStatus === "complete") {
             const score: number = payload?.result?.score ?? 0;
-            console.log("[upload] complete — score:", score, payload?.result);
-            setDebugInfo((d) => ({ ...d, uploadStatus: "complete" }));
             setState({ kind: "done" });
             onResult?.(currentReel.id, Math.round(score));
             handleClose();
@@ -691,13 +592,11 @@ const UploadAttemptModal = ({
           }
           if (pollStatus === "failed") {
             const msg = payload?.error || "Scoring failed";
-            setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
             setState({ kind: "failed", message: msg });
             return;
           }
-        } catch (err) {
-          const e = err as Error;
-          console.warn(`[upload] poll #${pollAttempt} fetch error:`, e?.name, e?.message);
+        } catch {
+          // tolerate transient errors — keep polling until budget exhausts
         } finally {
           clearTimeout(pollTimeout);
         }
@@ -705,13 +604,7 @@ const UploadAttemptModal = ({
       }
 
       const msg = `Timed out waiting for score after ${Math.round(POLL_BUDGET_MS / 1000)}s (job ${jobId})`;
-      console.error("[upload]", msg);
-      setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
       setState({ kind: "failed", message: msg });
-      } catch (err) {
-        console.error("[upload] FATAL UNCAUGHT:", err);
-        throw err;
-      }
     },
     [athleteId, onResult, handleClose],
   );
@@ -938,32 +831,6 @@ const UploadAttemptModal = ({
               >
                 Download Recording
               </Button>
-
-              {/* DEBUG OVERLAY — temporary, remove after diagnosing upload failures */}
-              <div className="absolute top-2 left-2 right-2 z-50 max-w-full rounded-md bg-black/90 p-2 font-mono text-[10px] leading-tight text-white break-all border border-white/20">
-                <div className="font-bold text-white/90 mb-1">DEBUG · upload</div>
-                <div>Blob: {(debugInfo.blobSize / 1024).toFixed(1)} KB, type: {debugInfo.blobType || "—"}</div>
-                <div>
-                  Stage: {debugInfo.uploadStatus}
-                  {debugInfo.httpStatus !== undefined ? ` (HTTP ${debugInfo.httpStatus})` : ""}
-                </div>
-                {debugInfo.storagePath && <div>Storage: {debugInfo.storagePath}</div>}
-                {debugInfo.storageUrl && <div className="text-white/70">URL: {debugInfo.storageUrl}</div>}
-                {debugInfo.jobId && <div>Job: {debugInfo.jobId}</div>}
-                {debugInfo.pollAttempt !== undefined && debugInfo.pollAttempt > 0 && (
-                  <div>Poll #{debugInfo.pollAttempt}: {debugInfo.pollStatus || "—"}</div>
-                )}
-                <div>
-                  Online: {debugInfo.online === undefined ? "—" : String(debugInfo.online)} · Proto: {debugInfo.pageProtocol || "—"}
-                </div>
-                {debugInfo.pending && (
-                  <div className="text-yellow-300">Pending: {debugInfo.pending}</div>
-                )}
-                {debugInfo.error && <div className="text-red-400">Error: {debugInfo.error}</div>}
-                {debugInfo.bodyPreview && (
-                  <div className="mt-1 text-white/70">Body: {debugInfo.bodyPreview}</div>
-                )}
-              </div>
             </div>
           )}
 
