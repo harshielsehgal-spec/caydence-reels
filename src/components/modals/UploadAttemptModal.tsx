@@ -483,16 +483,14 @@ const UploadAttemptModal = ({
       // Encode once, reuse across retries
       let base64: string;
       try {
-        base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            const comma = result.indexOf(",");
-            resolve(comma >= 0 ? result.slice(comma + 1) : result);
-          };
-          reader.onerror = () => reject(reader.error || new Error("FileReader failed"));
-          reader.readAsDataURL(blob);
-        });
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+        }
+        base64 = btoa(binary);
       } catch (err) {
         const msg = `Failed to read recording: ${(err as Error)?.message || err}`;
         console.error("[upload]", msg);
