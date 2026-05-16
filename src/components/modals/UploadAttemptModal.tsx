@@ -480,10 +480,13 @@ const UploadAttemptModal = ({
   // ---- Upload ----
   const uploadBlob = useCallback(
     async (blob: Blob) => {
+      console.log("[upload] STEP 1: uploadBlob called", { reel: !!reel, blobSize: blob.size, blobType: blob.type });
+      try {
       if (!reel) return;
 
       const onlineNow = typeof navigator !== "undefined" ? navigator.onLine : undefined;
       const pageProtocol = typeof document !== "undefined" ? document.location.protocol : undefined;
+      console.log("[upload] STEP 2: about to setDebugInfo");
       setDebugInfo((d) => ({
         ...d,
         uploadStatus: "uploading-storage",
@@ -492,6 +495,7 @@ const UploadAttemptModal = ({
         online: onlineNow,
         pageProtocol,
       }));
+      console.log("[upload] STEP 3: setDebugInfo done");
       console.log("[upload] uploadBlob entered", {
         onlineNow, pageProtocol, blobSize: blob.size, blobType: blob.type,
       });
@@ -499,16 +503,20 @@ const UploadAttemptModal = ({
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
       // (a) Upload to Supabase storage — direct binary, not base64.
+      console.log("[upload] STEP 4: generating UUID and path");
       const ext = blob.type.includes("mp4") ? "mp4" : "webm";
       const storagePath = `${crypto.randomUUID()}.${ext}`;
       const contentType = blob.type || (ext === "mp4" ? "video/mp4" : "video/webm");
+      console.log("[upload] STEP 5: path generated", { storagePath, contentType, ext });
 
       let storageUrl: string;
       try {
+        console.log("[upload] STEP 6: calling supabase.storage.upload");
         const { error: uploadErr } = await supabase
           .storage
           .from(STORAGE_BUCKET)
           .upload(storagePath, blob, { contentType, upsert: false });
+        console.log("[upload] STEP 7: supabase upload returned", { uploadErr });
         if (uploadErr) throw uploadErr;
         const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
         storageUrl = pub.publicUrl;
@@ -678,6 +686,10 @@ const UploadAttemptModal = ({
       console.error("[upload]", msg);
       setDebugInfo((d) => ({ ...d, uploadStatus: "error", error: msg }));
       setState({ kind: "failed", message: msg });
+      } catch (err) {
+        console.error("[upload] FATAL UNCAUGHT:", err);
+        throw err;
+      }
     },
     [reel, athleteId, onResult, handleClose],
   );
