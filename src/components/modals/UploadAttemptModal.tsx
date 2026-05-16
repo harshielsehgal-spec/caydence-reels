@@ -1011,7 +1011,7 @@ const UploadAttemptModal = ({
       setAutoHoldMs(0);
     };
 
-    if (state.kind !== "pre-recording" || framing.kind !== "ok" || alignment.kind !== "ok") {
+    if (state.kind !== "pre-recording" || framing.kind !== "ok") {
       cancel();
       return;
     }
@@ -1023,7 +1023,6 @@ const UploadAttemptModal = ({
       // If framing slipped or state changed, abort.
       if (
         framingRef.current.kind !== "ok" ||
-        alignmentRef.current.kind !== "ok" ||
         autoHoldStartRef.current === null
       ) {
         cancel();
@@ -1047,7 +1046,7 @@ const UploadAttemptModal = ({
     autoHoldRafRef.current = requestAnimationFrame(loop);
 
     return cancel;
-  }, [state.kind, framing.kind, alignment.kind, beginCountdown]);
+  }, [state.kind, framing.kind, beginCountdown]);
 
 
   const showFlipButton = isMobile && state.kind === "pre-recording";
