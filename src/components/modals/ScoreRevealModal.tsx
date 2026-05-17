@@ -307,6 +307,16 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                 </div>
               </div>
             )}
+
+            {/* Reveal Card CTA — user-controlled flip */}
+            {phase === "complete" && (
+              <Button
+                onClick={() => setPhase("card")}
+                className="mt-5 w-full gradient-primary text-primary-foreground font-bold animate-fade-in"
+              >
+                Reveal Your Athlete Card →
+              </Button>
+            )}
           </div>
         )}
       </DialogContent>
