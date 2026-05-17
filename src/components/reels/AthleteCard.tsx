@@ -208,17 +208,22 @@ const AthleteCard = ({
               </div>
 
               {/* Score */}
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center gap-1">
                 <span
                   className="text-7xl font-black leading-none"
                   style={{
                     fontFamily: "'Space Grotesk', sans-serif",
-                    background: `linear-gradient(180deg, hsl(${accentHsl}), hsl(${accentHsl} / 0.7))`,
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
+                    color: `hsl(${accentHsl})`,
+                    textShadow: `0 0 24px hsl(${accentHsl} / 0.5)`,
                   }}
                 >
                   {score}
+                </span>
+                <span
+                  className="text-2xl font-bold leading-none mt-2"
+                  style={{ color: `hsl(${accentHsl} / 0.8)` }}
+                >
+                  %
                 </span>
               </div>
 
