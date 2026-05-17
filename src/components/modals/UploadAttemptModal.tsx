@@ -546,7 +546,7 @@ const UploadAttemptModal = ({
       for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
         setState({ kind: "uploading", attempt });
         const r = await submitJob();
-        if (r.ok) {
+        if (r.ok === true) {
           jobId = r.jobId;
           break;
         } else {
