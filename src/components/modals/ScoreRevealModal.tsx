@@ -83,7 +83,6 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
         setTimeout(() => {
           setPhase("complete");
           setShowCoins(true);
-          setTimeout(() => setPhase("card"), 1800);
         }, 800);
       }
     };
