@@ -549,12 +549,13 @@ const UploadAttemptModal = ({
         if (r.ok) {
           jobId = r.jobId;
           break;
+        } else {
+          lastError = r.error;
+          if (!r.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
+          const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
+          toast.message(`Upload attempt ${attempt} failed — retrying…`);
+          await sleep(backoff);
         }
-        lastError = r.error;
-        if (!r.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
-        const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
-        toast.message(`Upload attempt ${attempt} failed — retrying…`);
-        await sleep(backoff);
       }
       if (!jobId) {
         const msg = lastError?.message || "Could not submit job to /reels/analyze";
