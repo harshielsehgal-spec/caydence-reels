@@ -546,15 +546,16 @@ const UploadAttemptModal = ({
       for (let attempt = 1; attempt <= UPLOAD_MAX_ATTEMPTS; attempt++) {
         setState({ kind: "uploading", attempt });
         const r = await submitJob();
-        if (r.ok) {
+        if (r.ok === true) {
           jobId = r.jobId;
           break;
+        } else {
+          lastError = r.error;
+          if (!r.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
+          const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
+          toast.message(`Upload attempt ${attempt} failed — retrying…`);
+          await sleep(backoff);
         }
-        lastError = r.error;
-        if (!r.retryable || attempt === UPLOAD_MAX_ATTEMPTS) break;
-        const backoff = UPLOAD_RETRY_BACKOFF_MS[attempt - 1] ?? 4000;
-        toast.message(`Upload attempt ${attempt} failed — retrying…`);
-        await sleep(backoff);
       }
       if (!jobId) {
         const msg = lastError?.message || "Could not submit job to /reels/analyze";

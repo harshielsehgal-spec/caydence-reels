@@ -83,7 +83,6 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
         setTimeout(() => {
           setPhase("complete");
           setShowCoins(true);
-          setTimeout(() => setPhase("card"), 1800);
         }, 800);
       }
     };
@@ -307,6 +306,16 @@ const ScoreRevealModal = ({ isOpen, onClose, reel, score, coins, sport, coaching
                   <span className="text-sm font-bold text-primary">+{coins} Caydence Coins</span>
                 </div>
               </div>
+            )}
+
+            {/* Reveal Card CTA — user-controlled flip */}
+            {phase === "complete" && (
+              <Button
+                onClick={() => setPhase("card")}
+                className="mt-5 w-full gradient-primary text-primary-foreground font-bold animate-fade-in"
+              >
+                Reveal Your Athlete Card →
+              </Button>
             )}
           </div>
         )}
